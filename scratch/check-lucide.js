@@ -1,0 +1,12 @@
+const lucide = require('lucide-react');
+console.log('ShieldCheck exists:', 'ShieldCheck' in lucide);
+console.log('ShieldAlert exists:', 'ShieldAlert' in lucide);
+console.log('ShieldX exists:', 'ShieldX' in lucide);
+console.log('Shield exists:', 'Shield' in lucide);
+console.log('ChevronRight exists:', 'ChevronRight' in lucide);
+console.log('Star exists:', 'Star' in lucide);
+console.log('Crown exists:', 'Crown' in lucide);
+console.log('Lock exists:', 'Lock' in lucide);
+console.log('Settings exists:', 'Settings' in lucide);
+console.log('Trash exists:', 'Trash' in lucide);
+console.log('UserGear exists:', 'UserCheck' in lucide);

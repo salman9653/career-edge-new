@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-gradient-from: var(--primary-gradient-from);
+  --color-primary-gradient-to: var(--primary-gradient-to);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f0f12;
+  --card: #ffffff;
+  --card-foreground: #0f0f12;
+  --popover: #ffffff;
+  --popover-foreground: #0f0f12;
+  --primary: #4f46e5; /* indigo-600 */
+  --primary-gradient-from: #4f46e5;
+  --primary-gradient-to: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f7; 
+  --secondary-foreground: #0f0f12;
+  --muted: #f4f4f7;
+  --muted-foreground: #5e6675;
+  --accent: #f4f4f7;
+  --accent-foreground: #0f0f12;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #4f46e5;
+}
+
+.dark {
+  --background: #030303; /* Premium dark background */
+  --foreground: #f8fafc;
+  --card: #09090b; 
+  --card-foreground: #f8fafc;
+  --popover: #09090b;
+  --popover-foreground: #f8fafc;
+  --primary: #818cf8; /* indigo-400 */
+  --primary-gradient-from: #818cf8;
+  --primary-gradient-to: #818cf8;
+  --primary-foreground: #0f0f12;
+  --secondary: #13131a; 
+  --secondary-foreground: #f8fafc;
+  --muted: #1e1e24;
+  --muted-foreground: #94a3b8;
+  --accent: #1e1e2f;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #1f1f2e;
+  --input: #1f1f2e;
+  --ring: #818cf8;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Premium Styling Rules */
+
+/* Custom grid background */
+.grid-bg {
+  background-image: radial-gradient(rgba(79, 70, 229, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.dark .grid-bg {
+  background-image: radial-gradient(rgba(129, 140, 248, 0.04) 1px, transparent 1px);
+}
+
+/* Glassmorphism containers */
+.glass {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass {
+  background: rgba(3, 3, 3, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(31, 31, 46, 0.7);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e1e2f;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Hero Radial Glow */
+.hero-glow {
+  background: radial-gradient(circle 600px at 50% 200px, rgba(99, 102, 241, 0.15), transparent 80%);
+}
+
+.dark .hero-glow {
+  background: radial-gradient(circle 800px at 50% 200px, rgba(99, 102, 241, 0.1), transparent 80%);
+}
+
+/* Focus Visible accessibility styles */
+*:focus-visible:not(input):not(textarea):not(select) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Remove all outlines, rings, and focus shadows for inputs, textareas, and select elements */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea,
+select {
+  outline: none !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):active,
+textarea:focus,
+textarea:focus-visible,
+textarea:active,
+select:focus,
+select:focus-visible,
+select:active {
+  outline: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border-width: 1px !important;
+  border-bottom-width: 3px !important;
+  border-color: color-mix(in srgb, var(--active-color, var(--primary)) 30%, transparent) !important;
+  border-bottom-color: var(--active-color, var(--primary)) !important;
+}
+
+/* Accessibility: Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
