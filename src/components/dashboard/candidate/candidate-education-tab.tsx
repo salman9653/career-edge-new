@@ -15,10 +15,12 @@ interface EducationItem {
 interface CandidateEducationTabProps {
   formData: any;
   updateField: (key: string, value: any) => void;
+  onEducationAutoSaved: (updatedEducation: any[]) => void;
 }
 
-export function CandidateEducationTab({ formData, updateField }: CandidateEducationTabProps) {
+export function CandidateEducationTab({ formData, updateField, onEducationAutoSaved }: CandidateEducationTabProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [newEdu, setNewEdu] = useState<EducationItem>({
     degree: "",
     school: "",
@@ -26,10 +28,42 @@ export function CandidateEducationTab({ formData, updateField }: CandidateEducat
     grade: "",
   });
 
+  const saveEducationToDb = async (updatedEducation: EducationItem[]) => {
+    setSaveStatus("saving");
+    try {
+      const body = {
+        ...formData,
+        education: updatedEducation,
+        jobTitle: formData.career.jobTitle || formData.jobTitle
+      };
+      
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
+      }
+      
+      onEducationAutoSaved(updatedEducation);
+      setSaveStatus("saved");
+      setTimeout(() => {
+        setSaveStatus("idle");
+      }, 2000);
+    } catch (err) {
+      console.error("Auto-save education error:", err);
+      setSaveStatus("error");
+    }
+  };
+
   const handleAddEdu = () => {
     if (!newEdu.degree.trim() || !newEdu.school.trim()) return;
     const current = formData.education || [];
-    updateField("education", [...current, newEdu]);
+    const updated = [...current, newEdu];
+    updateField("education", updated);
     setNewEdu({
       degree: "",
       school: "",
@@ -37,18 +71,40 @@ export function CandidateEducationTab({ formData, updateField }: CandidateEducat
       grade: "",
     });
     setShowAddForm(false);
+    saveEducationToDb(updated);
   };
 
   const removeEdu = (index: number) => {
     const current = formData.education || [];
-    updateField("education", current.filter((_: any, i: number) => i !== index));
+    const updated = current.filter((_: any, i: number) => i !== index);
+    updateField("education", updated);
+    saveEducationToDb(updated);
   };
 
   return (
     <div className="space-y-6 text-left font-semibold text-xs text-foreground">
-      <div className="flex justify-between items-center">
-        <label className="text-[10px] uppercase text-muted-foreground">Education Credentials</label>
-        {!showAddForm && (
+      {/* Title & Subtitle */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-extrabold text-foreground">Education</h3>
+            {saveStatus !== "idle" && (
+              <span className={`text-[10px] font-bold ${
+                saveStatus === "saving" ? "text-indigo-500 animate-pulse" :
+                saveStatus === "saved" ? "text-emerald-500" :
+                "text-rose-500"
+              }`}>
+                {saveStatus === "saving" ? "Saving..." :
+                 saveStatus === "saved" ? "Saved!" :
+                 "Failed to save"}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">
+            Detail your academic credentials.
+          </p>
+        </div>
+        {!showAddForm && (formData.education || []).length > 0 && (
           <Button
             type="button"
             onClick={() => setShowAddForm(true)}
@@ -163,18 +219,32 @@ export function CandidateEducationTab({ formData, updateField }: CandidateEducat
                 type="button"
                 onClick={() => removeEdu(index)}
                 variant="ghost"
-                size="sm"
-                className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer"
+                size="icon"
+                className="h-10 w-10 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 dark:hover:bg-rose-500/20 rounded-xl cursor-pointer shrink-0 flex items-center justify-center"
               >
-                <Trash className="w-4 h-4" />
+                <Trash className="w-5 h-5" />
               </Button>
             </div>
           ))
-        ) : (
-          <div className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-250/20 dark:border-neutral-750/10 text-xs text-muted-foreground font-medium text-center">
-            No education credentials listed yet. Click "Add Education" to add one.
+        ) : !showAddForm ? (
+          <div className="border border-dashed border-neutral-200 dark:border-neutral-800/80 bg-neutral-50/20 dark:bg-neutral-950/10 rounded-3xl p-10 flex flex-col items-center justify-center text-center space-y-4">
+            <GraduationCap className="w-10 h-10 text-slate-700 dark:text-slate-300 stroke-[1.5]" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-extrabold text-foreground">No Education Yet</h4>
+              <p className="text-xs text-muted-foreground font-medium max-w-md">
+                You haven't added any academic credentials yet. Add your education history.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => setShowAddForm(true)}
+              variant="secondary"
+              className="text-xs font-bold px-5 py-2.5 h-10 rounded-xl gap-1.5 cursor-pointer shadow-sm border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-100/50 dark:bg-neutral-900/50 hover:bg-neutral-250/60 dark:hover:bg-neutral-800/80"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Education
+            </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

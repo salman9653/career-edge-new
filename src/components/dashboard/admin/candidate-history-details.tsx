@@ -42,12 +42,6 @@ interface CandidateHistoryDetailsProps {
   candidate: CandidateDetails;
 }
 
-const DummyTag = () => (
-  <span className="inline-flex items-center px-1.5 py-0.2 rounded bg-amber-500/10 text-[7px] font-bold text-amber-500 dark:text-amber-400 border border-amber-500/15 ml-1.5 uppercase select-none tracking-wider scale-90 origin-left">
-    dummy
-  </span>
-);
-
 export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsProps) {
   const handleDownload = () => {
     if (!candidate.resumeBase64) return;
@@ -64,28 +58,30 @@ export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsPr
   const hasEducation = candidate.education && candidate.education.length > 0;
   const hasProjects = candidate.projects && candidate.projects.length > 0;
 
+  if (!hasResume && !hasEmployment && !hasEducation && !hasProjects) return null;
+
   return (
     <div className="space-y-6 pt-5 border-t border-neutral-200/30 dark:border-neutral-850/50">
       {/* Resume Section */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <FileText className="w-4 h-4 text-primary" /> Resume {!hasResume && <DummyTag />}
-        </h3>
-        <div className="flex items-center justify-between p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
-              <FileText className="w-5 h-5" />
+      {hasResume && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-primary" /> Resume
+          </h3>
+          <div className="flex items-center justify-between p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">
+                  {candidate.resumeName || "resume.pdf"}
+                </p>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Uploaded PDF/Document
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-foreground">
-                {hasResume ? candidate.resumeName : "Resume_CV_2026.pdf"}
-              </p>
-              <p className="text-[10px] text-muted-foreground font-medium">
-                {hasResume ? "Uploaded PDF/Document" : "Fallback sample resume document"}
-              </p>
-            </div>
-          </div>
-          {hasResume ? (
             <Button
               onClick={handleDownload}
               variant="outline"
@@ -94,28 +90,19 @@ export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsPr
             >
               <Download className="w-3.5 h-3.5" /> Download
             </Button>
-          ) : (
-            <Button
-              disabled
-              variant="ghost"
-              size="sm"
-              className="text-[10px] font-bold gap-1.5 h-8 rounded-lg text-muted-foreground/50"
-            >
-              <Download className="w-3.5 h-3.5" /> Not Uploaded
-            </Button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Employment Section */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <Briefcase className="w-4 h-4 text-primary" /> Employment History {!hasEmployment && <DummyTag />}
-        </h3>
+      {hasEmployment && (
         <div className="space-y-3">
-          {hasEmployment ? (
-            candidate.employment!.map((emp, idx) => (
-              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 space-y-2 text-xs">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Briefcase className="w-4 h-4 text-primary" /> Employment History
+          </h3>
+          <div className="space-y-3">
+            {candidate.employment!.map((emp, idx) => (
+              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-850/50 space-y-2 text-xs">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-bold text-foreground">{emp.designation}</h4>
@@ -137,24 +124,20 @@ export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsPr
                   </p>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 text-xs text-muted-foreground font-medium">
-              No employment history listed.
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Education Section */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <GraduationCap className="w-4 h-4 text-primary" /> Education {!hasEducation && <DummyTag />}
-        </h3>
+      {hasEducation && (
         <div className="space-y-3">
-          {hasEducation ? (
-            candidate.education!.map((edu, idx) => (
-              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 space-y-1.5 text-xs">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <GraduationCap className="w-4 h-4 text-primary" /> Education
+          </h3>
+          <div className="space-y-3">
+            {candidate.education!.map((edu, idx) => (
+              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-850/50 space-y-1.5 text-xs">
                 <div className="flex justify-between items-start">
                   <h4 className="font-bold text-foreground">{edu.degree}</h4>
                   <span className="text-[10px] text-primary font-bold">{edu.grade || "N/A"}</span>
@@ -164,24 +147,20 @@ export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsPr
                   <Calendar className="w-3.5 h-3.5" /> Passing Year: {edu.passingYear}
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 text-xs text-muted-foreground font-medium">
-              No education credentials listed.
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Projects Section */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-          <FolderGit2 className="w-4 h-4 text-primary" /> Projects {!hasProjects && <DummyTag />}
-        </h3>
+      {hasProjects && (
         <div className="space-y-3">
-          {hasProjects ? (
-            candidate.projects!.map((project, idx) => (
-              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 space-y-2 text-xs">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <FolderGit2 className="w-4 h-4 text-primary" /> Projects
+          </h3>
+          <div className="space-y-3">
+            {candidate.projects!.map((project, idx) => (
+              <div key={idx} className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-850/50 space-y-2 text-xs">
                 <div className="flex justify-between items-start">
                   <h4 className="font-bold text-foreground">{project.title}</h4>
                   {project.projectLink && (
@@ -215,14 +194,10 @@ export function CandidateHistoryDetails({ candidate }: CandidateHistoryDetailsPr
                   </p>
                 )}
               </div>
-            ))
-          ) : (
-            <div className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 text-xs text-muted-foreground font-medium">
-              No projects listed.
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

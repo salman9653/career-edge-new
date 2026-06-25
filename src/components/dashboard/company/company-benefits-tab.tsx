@@ -1,7 +1,10 @@
 "use client";
 
 import React from "react";
-import { Heart, Laptop, Clock, Activity, Sparkles, Gift, BookOpen, Calendar } from "lucide-react";
+import { 
+  Heart, Laptop, Clock, Activity, Sparkles, Gift, BookOpen, Calendar,
+  Coffee, Baby, Coins, Shield, Users, Car, GraduationCap, Smile
+} from "lucide-react";
 
 interface CompanyBenefitsTabProps {
   formData: any;
@@ -16,7 +19,15 @@ const BENEFIT_OPTIONS = [
   { name: "Gym & Wellness", icon: Sparkles },
   { name: "Performance Bonus", icon: Gift },
   { name: "Training & Mentorship", icon: BookOpen },
-  { name: "Paid Time Off", icon: Calendar }
+  { name: "Paid Time Off", icon: Calendar },
+  { name: "Free Meals & Snacks", icon: Coffee },
+  { name: "Maternity/Paternity Leave", icon: Baby },
+  { name: "Stock Options / Equity", icon: Coins },
+  { name: "Pension & 401(k)", icon: Shield },
+  { name: "Team Outings", icon: Users },
+  { name: "Commuter Benefits", icon: Car },
+  { name: "Tuition Assistance", icon: GraduationCap },
+  { name: "Pet-Friendly Office", icon: Smile }
 ];
 
 export function CompanyBenefitsTab({ formData, toggleBenefit }: CompanyBenefitsTabProps) {

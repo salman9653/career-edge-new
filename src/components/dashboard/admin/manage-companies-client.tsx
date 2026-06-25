@@ -3,9 +3,10 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/dashboard/common";
-import { User } from "lucide-react";
+import { User, CheckSquare, Square } from "lucide-react";
 import Image from "next/image";
 import { useUIStore } from "@/store/useUIStore";
+import { cn } from "@/lib/utils";
 
 interface CompanyRow {
   id: string;
@@ -33,12 +34,16 @@ export function ManageCompaniesClient({ companies }: ManageCompaniesClientProps)
 
   // Set TopBar details dynamically
   useEffect(() => {
-    const { setHeader, clearHeader } = useUIStore.getState();
+    const { setHeader, clearHeader, setViewSwitcher } = useUIStore.getState();
     setHeader(
       "Manage Companies",
       "Overview of all active and pending employer accounts registered on the platform."
     );
-    return () => clearHeader();
+    setViewSwitcher(true, "manage-company-view");
+    return () => {
+      clearHeader();
+      setViewSwitcher(false);
+    };
   }, []);
 
   const handleRowClick = (row: CompanyRow) => {
@@ -121,6 +126,115 @@ export function ManageCompaniesClient({ companies }: ManageCompaniesClientProps)
     },
   ];
 
+  const renderCompanyCard = (
+    row: CompanyRow,
+    isSelected: boolean,
+    toggleSelect: (e: React.MouseEvent) => void,
+    selectMode: boolean
+  ) => {
+    return (
+      <div
+        className={cn(
+          "relative rounded-2xl glass border p-5 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg group text-left h-full",
+          isSelected
+            ? "border-primary bg-primary/5 shadow-md"
+            : "border-neutral-200/30 dark:border-neutral-800/50 bg-card hover:border-neutral-300 dark:hover:border-neutral-700"
+        )}
+      >
+        {/* Selection Checkbox */}
+        {selectMode && (
+          <button
+            onClick={toggleSelect}
+            className="absolute top-4 right-4 cursor-pointer text-muted-foreground hover:text-foreground z-10 transition-colors"
+          >
+            {isSelected ? (
+              <CheckSquare className="w-5 h-5 text-primary animate-in zoom-in-50 duration-150" />
+            ) : (
+              <Square className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+            )}
+          </button>
+        )}
+
+        {/* Company Profile Info */}
+        <div className="flex items-center gap-3.5">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shadow-sm border border-primary/10">
+            {row.image ? (
+              <Image src={row.image} alt={row.companyName} fill className="object-cover" />
+            ) : (
+              row.companyName.charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+              {row.companyName}
+            </span>
+            <span className="text-[11px] text-muted-foreground truncate">{row.email}</span>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50" />
+
+        {/* Company Details */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Subscription</span>
+            <div className="flex items-center gap-1.5 text-foreground">
+              <User className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-medium">{row.subscription}</span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Company Size</span>
+            <span className="font-medium text-foreground">{row.companySize}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Company Type</span>
+            <span className="font-medium text-foreground truncate">{row.companyType}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Jobs Posted</span>
+            <span className="font-medium text-foreground">{row.jobsPosted}</span>
+          </div>
+          <div className="flex flex-col gap-1 col-span-2">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Status</span>
+            <div>
+              {(() => {
+                const isBanned = row.status === "Banned";
+                const isInactive = row.status === "Inactive";
+                return (
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      isBanned
+                        ? "bg-red-500/10 text-red-500 border-red-500/10"
+                        : isInactive
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/10"
+                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/10"
+                    }`}
+                  >
+                    {row.status}
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Member Since (Footer style) */}
+        <div className="mt-auto pt-2 text-[10px] text-muted-foreground flex justify-between items-center border-t border-neutral-100/50 dark:border-neutral-900/50">
+          <span>Member Since</span>
+          <span className="font-medium">
+            {new Date(row.memberSince).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-[calc(100vh-104px)] sm:h-[calc(100vh-112px)] flex flex-col overflow-hidden -mb-[40px] sm:-mb-[48px]">
       <DataTable
@@ -130,6 +244,7 @@ export function ManageCompaniesClient({ companies }: ManageCompaniesClientProps)
         searchKey="companyName"
         entityName="Company"
         onRowClick={handleRowClick}
+        renderCard={renderCompanyCard}
       />
     </div>
   );

@@ -3,16 +3,59 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FileText, Download, Eye, Calendar, User, MapPin, Pencil } from "lucide-react";
+import { FileText, Download, Eye, Calendar, User, MapPin, Pencil, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LinkedinIcon, GitHubIcon } from "@/components/common";
+import { FaFilePdf, FaFileImage, FaFileWord, FaFile } from "react-icons/fa";
+import { cn } from "@/lib/utils";
+
+const getFileIconInfo = (fileName: string) => {
+  if (!fileName) {
+    return {
+      Icon: FaFile,
+      colorClass: "text-neutral-500 dark:text-neutral-400"
+    };
+  }
+  const parts = fileName.split(".");
+  const ext = parts[parts.length - 1].toLowerCase();
+  switch (ext) {
+    case "pdf":
+      return {
+        Icon: FaFilePdf,
+        colorClass: "text-red-500 dark:text-red-400"
+      };
+    case "doc":
+    case "docx":
+      return {
+        Icon: FaFileWord,
+        colorClass: "text-blue-500 dark:text-blue-400"
+      };
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "webp":
+    case "svg":
+      return {
+        Icon: FaFileImage,
+        colorClass: "text-emerald-500 dark:text-emerald-400"
+      };
+    default:
+      return {
+        Icon: FaFile,
+        colorClass: "text-neutral-500 dark:text-neutral-400"
+      };
+  }
+};
 
 interface CandidateOwnProfileProps {
   candidate: any;
+  emailVerified?: boolean;
 }
 
-export function CandidateOwnProfile({ candidate }: CandidateOwnProfileProps) {
+export function CandidateOwnProfile({ candidate, emailVerified = false }: CandidateOwnProfileProps) {
   const router = useRouter();
+  const { Icon: FileIcon, colorClass } = getFileIconInfo(candidate.resumeName || "");
 
   const career = candidate.career || {};
   const socials = candidate.socials || {};
@@ -95,9 +138,15 @@ export function CandidateOwnProfile({ candidate }: CandidateOwnProfileProps) {
             <h2 className="text-2xl font-black tracking-tight">{candidate.name}</h2>
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
               <span>{candidate.email}</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-rose-500/10 text-[9px] font-bold text-rose-500 border border-rose-500/15">
-                ✗ Unverified
-              </span>
+              {emailVerified ? (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-500">
+                  <CheckCircle className="w-4 h-4 text-emerald-500" /> Verified
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-xs font-bold text-rose-500">
+                  <AlertCircle className="w-4 h-4 text-rose-500" /> Unverified
+                </span>
+              )}
             </div>
             {candidate.phone && <p className="text-xs font-bold text-muted-foreground">{candidate.phone}</p>}
           </div>
@@ -133,7 +182,7 @@ export function CandidateOwnProfile({ candidate }: CandidateOwnProfileProps) {
           <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground">Resume</h3>
           <div className="flex items-center justify-between p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-200/15 dark:border-neutral-800/15 text-xs">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-primary/10 rounded-xl text-primary"><FileText className="w-5 h-5" /></div>
+              <FileIcon className={cn("w-7 h-7 shrink-0", colorClass)} />
               <div>
                 <p className="font-bold text-foreground">{candidate.resumeName}</p>
                 <p className="text-[10px] text-muted-foreground font-medium">Last updated: active profile CV</p>

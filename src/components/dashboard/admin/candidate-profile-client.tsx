@@ -50,10 +50,12 @@ export function CandidateProfileClient({ candidate }: CandidateProfileClientProp
       <CandidateProfileDetails candidate={candidate} />
 
       {/* Associated Applications Table */}
-      <CandidateProfileApplications 
-        candidateName={candidate.name} 
-        applications={candidate.applications} 
-      />
+      {candidate.applications && candidate.applications.length > 0 && (
+        <CandidateProfileApplications 
+          candidateName={candidate.name} 
+          applications={candidate.applications} 
+        />
+      )}
     </div>
   );
 }

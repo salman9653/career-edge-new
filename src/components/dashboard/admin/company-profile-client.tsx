@@ -51,7 +51,7 @@ export function CompanyProfileClient({ company }: CompanyProfileClientProps) {
   return (
     <div className="w-full space-y-6">
       {/* Main Glass Profile Card Details */}
-      <CompanyProfileDetails company={company} />
+      <CompanyProfileDetails company={company} showCollapse={true} />
 
       {/* Associated Job Postings Table */}
       <CompanyProfileJobs companyName={company.companyName} jobs={company.jobs} />

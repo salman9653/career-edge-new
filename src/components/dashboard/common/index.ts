@@ -11,6 +11,7 @@ export { UnderDevelopmentModule } from "./under-development";
 export { SettingsModal } from "./settings";
 export { DataTable } from "./data-table";
 export type { ColumnDef } from "./data-table";
+export { DataTableCards } from "./data-table-cards";
 export { UserProfileClient } from "./user-profile-client";
 export { EditProfileClient } from "./edit-profile-client";
 

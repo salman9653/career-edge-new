@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { User, Calendar, MapPin, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface CandidatePersonalTabProps {
   formData: any;
@@ -11,8 +13,6 @@ interface CandidatePersonalTabProps {
 }
 
 export function CandidatePersonalTab({ formData, updateField }: CandidatePersonalTabProps) {
-  const [newLang, setNewLang] = useState("");
-
   const handleAddressChange = (field: string, value: string) => {
     updateField("address", {
       ...formData.address,
@@ -21,30 +21,27 @@ export function CandidatePersonalTab({ formData, updateField }: CandidatePersona
   };
 
   const addLanguage = () => {
-    if (!newLang.trim()) return;
     const current = formData.languages || [];
-    if (current.some((l: any) => l.language.toLowerCase() === newLang.trim().toLowerCase())) return;
-    
     updateField("languages", [
       ...current,
-      { language: newLang.trim(), read: true, write: false, speak: true }
+      { language: "", proficiency: "Proficient", read: true, write: true, speak: true }
     ]);
-    setNewLang("");
   };
 
-  const removeLanguage = (langName: string) => {
+  const removeLanguage = (index: number) => {
     const current = formData.languages || [];
-    updateField("languages", current.filter((l: any) => l.language !== langName));
+    updateField("languages", current.filter((_: any, i: number) => i !== index));
   };
 
-  const toggleLangCapability = (langName: string, cap: "read" | "write" | "speak") => {
+  const handleLanguageFieldChange = (index: number, field: string, value: any) => {
     const current = formData.languages || [];
-    updateField("languages", current.map((l: any) => {
-      if (l.language === langName) {
-        return { ...l, [cap]: !l[cap] };
+    const updated = current.map((l: any, i: number) => {
+      if (i === index) {
+        return { ...l, [field]: value };
       }
       return l;
-    }));
+    });
+    updateField("languages", updated);
   };
 
   return (
@@ -54,38 +51,36 @@ export function CandidatePersonalTab({ formData, updateField }: CandidatePersona
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Date of Birth</label>
           <div className="relative">
-            <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
+            <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
+            <DatePicker
               value={formData.dob}
-              onChange={(e) => updateField("dob", e.target.value)}
-              placeholder="e.g. 07 Sep 2004"
-              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
+              onChange={(val) => updateField("dob", val)}
+              placeholder="Select date of birth"
+              className="pl-11"
             />
           </div>
         </div>
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Gender</label>
-          <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.gender}
-              onChange={(e) => updateField("gender", e.target.value)}
-              placeholder="e.g. Male"
-              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
-            />
-          </div>
+          <Select
+            value={formData.gender}
+            onChange={(val) => updateField("gender", val)}
+            options={["Male", "Female", "Other"]}
+            placeholder="Select Gender"
+            icon={<User className="w-4 h-4" />}
+            className="h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold px-3.5"
+          />
         </div>
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Marital Status</label>
-          <div className="relative">
-            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={formData.maritalStatus}
-              onChange={(e) => updateField("maritalStatus", e.target.value)}
-              placeholder="e.g. Single"
-              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
-            />
-          </div>
+          <Select
+            value={formData.maritalStatus}
+            onChange={(val) => updateField("maritalStatus", val)}
+            options={["Single", "Married", "Divorced", "Widowed", "Prefer not to say"]}
+            placeholder="Select Marital Status"
+            icon={<User className="w-4 h-4" />}
+            className="h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold px-3.5"
+          />
         </div>
       </div>
 
@@ -150,7 +145,12 @@ export function CandidatePersonalTab({ formData, updateField }: CandidatePersona
                 <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   value={formData.address.pin}
-                  onChange={(e) => handleAddressChange("pin", e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    if (val.length <= 6) {
+                      handleAddressChange("pin", val);
+                    }
+                  }}
                   placeholder="PIN code"
                   className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
                 />
@@ -161,57 +161,96 @@ export function CandidatePersonalTab({ formData, updateField }: CandidatePersona
       </div>
 
       {/* Languages */}
-      <div className="space-y-3">
-        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block pl-1">Language Proficiency</label>
-        <div className="bg-neutral-100/10 dark:bg-neutral-900/10 p-4 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={newLang}
-              onChange={(e) => setNewLang(e.target.value)}
-              placeholder="e.g. English, Spanish"
-              className="h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold px-4 flex-grow"
-            />
-            <Button
-              type="button"
-              onClick={addLanguage}
-              variant="secondary"
-              className="h-11 px-4 rounded-xl cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="space-y-2">
-            {(formData.languages || []).map((l: any) => (
-              <div
-                key={l.language}
-                className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-neutral-200/10 dark:border-neutral-800/10 text-xs"
-              >
-                <span className="font-semibold text-foreground pl-2">{l.language}</span>
-                <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground pr-2">
-                  {["read", "write", "speak"].map(cap => (
-                    <label key={cap} className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={l[cap]}
-                        onChange={() => toggleLangCapability(l.language, cap as any)}
-                        className="w-3.5 h-3.5 accent-primary cursor-pointer"
-                      />
-                      <span className="capitalize">{cap}</span>
-                    </label>
-                  ))}
-                  <Button
-                    type="button"
-                    onClick={() => removeLanguage(l.language)}
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 text-rose-500 hover:bg-rose-500/10 p-0 rounded-lg cursor-pointer flex items-center justify-center"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
+      <div className="space-y-4 pt-4 border-t border-neutral-200/10 dark:border-neutral-855/30">
+        <div className="space-y-1">
+          <h3 className="text-sm font-extrabold text-foreground">Language proficiency</h3>
+          <p className="text-xs text-muted-foreground font-medium">
+            Strengthen your resume by letting recruiters know you can communicate in multiple languages
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {(formData.languages || []).map((l: any, index: number) => (
+            <div key={index} className="space-y-3 pb-6 border-b border-neutral-200/10 dark:border-neutral-850/20 last:border-b-0 last:pb-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-0.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">
+                    Language <span className="text-rose-500">*</span>
+                  </label>
+                  <Select
+                    value={l.language}
+                    onChange={(val) => handleLanguageFieldChange(index, "language", val)}
+                    options={["English", "Hindi", "Spanish", "French", "German", "Mandarin", "Japanese", "Russian", "Arabic", "Portuguese", "Italian", "Korean", "Bengali", "Punjabi", "Marathi", "Telugu", "Tamil", "Gujarati", "Urdu", "Kannada", "Odia", "Malayalam"]}
+                    placeholder="Select Language"
+                    className="h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold px-3.5"
+                  />
+                </div>
+
+                <div className="space-y-0.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">
+                    Proficiency <span className="text-rose-500">*</span>
+                  </label>
+                  <Select
+                    value={l.proficiency || "Proficient"}
+                    onChange={(val) => handleLanguageFieldChange(index, "proficiency", val)}
+                    options={["Beginner", "Intermediate", "Proficient", "Expert"]}
+                    placeholder="Select Proficiency"
+                    className="h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold px-3.5"
+                  />
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="flex items-center justify-between pl-1">
+                <div className="flex items-center gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!l.read}
+                      onChange={(e) => handleLanguageFieldChange(index, "read", e.target.checked)}
+                      className="w-4 h-4 rounded border-neutral-300 accent-primary cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-foreground">Read</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!l.write}
+                      onChange={(e) => handleLanguageFieldChange(index, "write", e.target.checked)}
+                      className="w-4 h-4 rounded border-neutral-300 accent-primary cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-foreground">Write</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={!!l.speak}
+                      onChange={(e) => handleLanguageFieldChange(index, "speak", e.target.checked)}
+                      className="w-4 h-4 rounded border-neutral-300 accent-primary cursor-pointer"
+                    />
+                    <span className="text-xs font-semibold text-foreground">Speak</span>
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => removeLanguage(index)}
+                  className="text-xs font-bold text-blue-500 hover:text-blue-600 transition-colors cursor-pointer bg-transparent border-none p-0"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addLanguage}
+            className="text-xs font-bold text-blue-500 hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5 bg-transparent border-none p-0 mt-2"
+          >
+            + {(formData.languages || []).length > 0 ? "Add another language" : "Add language"}
+          </button>
         </div>
       </div>
     </div>

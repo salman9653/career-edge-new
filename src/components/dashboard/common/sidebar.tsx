@@ -58,7 +58,6 @@ export function Sidebar({
           { id: "dashboard", label: "Dashboard", icon: Home },
           { id: "manage-companies", label: "Manage Companies", icon: Building },
           { id: "candidates", label: "Manage Candidates", icon: Users },
-          { id: "questions", label: "Question Bank", icon: BookOpen },
           { id: "app", label: "Manage App", icon: Settings }
         ]
       case "company":

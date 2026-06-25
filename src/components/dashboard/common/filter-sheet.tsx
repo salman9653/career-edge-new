@@ -4,6 +4,7 @@ import React from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 
 export interface FilterConfig {
   key: string;
@@ -46,7 +47,7 @@ export function FilterSheet({
           </Button>
           <Button
             onClick={onApplyFilters}
-            className="flex-grow h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-neutral-950 font-bold text-xs cursor-pointer shadow-md shadow-amber-500/10"
+            className="flex-grow h-11 rounded-xl bg-primary hover:opacity-90 text-white font-bold text-xs cursor-pointer shadow-md"
           >
             Apply Filters
           </Button>
@@ -73,11 +74,11 @@ export function FilterSheet({
                   >
                     <div
                       className={cn(
-                        "w-4.5 h-4.5 rounded-full border border-neutral-300 dark:border-neutral-700 flex items-center justify-center transition-all group-hover:border-primary",
-                        active ? "border-primary bg-primary/10" : ""
+                        "w-4.5 h-4.5 rounded border border-neutral-300 dark:border-neutral-700 flex items-center justify-center transition-all group-hover:border-primary",
+                        active ? "border-primary bg-primary text-white" : ""
                       )}
                     >
-                      {active && <div className="w-2 h-2 rounded-full bg-primary" />}
+                      {active && <Check className="w-3.5 h-3.5 stroke-[3.5]" />}
                     </div>
                     <span>{opt}</span>
                   </button>

@@ -20,7 +20,7 @@ export function CompanyContactTab({ formData, handleNestedChange }: CompanyConta
             type="email"
             value={formData.contact.email}
             onChange={(e) => handleNestedChange("contact", "email", e.target.value)}
-            required
+            placeholder="e.g. contact@company.com"
             className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
           />
         </div>

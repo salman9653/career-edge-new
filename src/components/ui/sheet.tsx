@@ -58,7 +58,7 @@ export function Sheet({ isOpen, onClose, title, children, footer, className }: S
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.35, ease: "easeInOut" }}
             className={cn(
-              "relative w-full max-w-sm h-full glass border-l border-neutral-200/50 dark:border-neutral-800/50 shadow-2xl flex flex-col bg-background/95 backdrop-blur-md focus:outline-none z-10 text-left",
+              "relative w-full max-w-sm h-full border-l border-neutral-200/50 dark:border-neutral-800/50 shadow-2xl flex flex-col bg-background/95 backdrop-blur-md focus:outline-none z-10 text-left",
               className
             )}
           >

@@ -2,16 +2,11 @@
 
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/store/useUIStore";
 import { User } from "@/types";
-import {
-  CandidateProfileDetails,
-  CandidateProfileApplications,
-  CompanyProfileDetails,
-  CompanyProfileJobs
-} from "@/components/dashboard/admin";
+import { CompanyProfileDetails } from "@/components/dashboard/admin";
 import { CandidateOwnProfile } from "@/components/dashboard/candidate";
 
 interface UserProfileClientProps {
@@ -32,35 +27,26 @@ export function UserProfileClient({ profile, user }: UserProfileClientProps) {
 
   return (
     <div className="w-full space-y-6 text-left pb-10">
-      {/* Top Navigation & Edit Banner */}
-      <div className="flex items-center justify-between p-4 rounded-2xl glass border border-neutral-200/40 dark:border-neutral-850/50 bg-neutral-50/20 dark:bg-[#07070b]/20">
+      {/* Back to Dashboard */}
+      <div className="flex justify-start">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => router.push("/dashboard")}
-          className="text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer gap-1.5 rounded-xl"
+          className="text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer gap-1.5 rounded-xl px-0 hover:bg-transparent"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Button>
-        <Button
-          onClick={() => router.push("/dashboard/profile/edit")}
-          variant="premium"
-          size="sm"
-          className="text-xs font-bold gap-1.5 rounded-xl cursor-pointer shadow-md shadow-indigo-500/10"
-        >
-          <Pencil className="w-3.5 h-3.5" /> Edit Profile
         </Button>
       </div>
 
       {/* Main Profile Sections */}
       {isCompany ? (
         <div className="space-y-6">
-          <CompanyProfileDetails company={profile} />
-          <CompanyProfileJobs companyName={profile.companyName} jobs={profile.jobs} />
+          <CompanyProfileDetails company={profile} isOwnProfile={true} />
         </div>
       ) : (
         <div className="space-y-6">
-          <CandidateOwnProfile candidate={profile} />
+          <CandidateOwnProfile candidate={profile} emailVerified={user.emailVerified} />
         </div>
       )}
     </div>

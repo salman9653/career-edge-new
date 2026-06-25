@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, List, LayoutGrid } from "lucide-react";
 import { useUIStore } from "@/store/useUIStore";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface TopBarProps {
   title: string;
@@ -12,7 +13,7 @@ interface TopBarProps {
 
 export function TopBar({ title: fallbackTitle }: TopBarProps) {
   const router = useRouter();
-  const { headerTitle, headerSubtitle, headerBackHref } = useUIStore();
+  const { headerTitle, headerSubtitle, headerBackHref, viewMode, setViewMode, showViewSwitcher } = useUIStore();
 
   const title = headerTitle || fallbackTitle;
   
@@ -50,7 +51,34 @@ export function TopBar({ title: fallbackTitle }: TopBarProps) {
       </div>
       
       <div className="flex items-center space-x-4">
-        {/* Hidden elements per requirements */}
+        {showViewSwitcher && (
+          <div className="hidden md:flex items-center bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-1 rounded-xl gap-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
+                viewMode === "list"
+                  ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("card")}
+              className={cn(
+                "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
+                viewMode === "card"
+                  ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Card View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

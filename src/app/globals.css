@@ -23,11 +23,13 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --background-image-ai-gradient: var(--ai-gradient);
   
   --font-sans: var(--font-sans), system-ui, sans-serif;
 }
 
 :root {
+  --ai-gradient: linear-gradient(135deg, #a855f7 0%, #ec4899 50%, #f43f5e 100%);
   --background: #ffffff;
   --foreground: #0f0f12;
   --card: #ffffff;
@@ -185,3 +187,22 @@ select:active {
   }
 }
 
+/* Premium Gradient Border for AI features */
+.border-ai-gradient {
+  position: relative;
+  border: 1px solid transparent !important;
+}
+
+.border-ai-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px; /* Border thickness */
+  background: var(--ai-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 10;
+}

@@ -6,6 +6,8 @@ import { DataTable, ColumnDef } from "@/components/dashboard/common";
 import Image from "next/image";
 import { useUIStore } from "@/store/useUIStore";
 import { CandidateRow } from "@/dummy-data/admin-manage_candidates_table";
+import { CheckSquare, Square } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ManageCandidatesClientProps {
   candidates: CandidateRow[];
@@ -16,12 +18,16 @@ export function ManageCandidatesClient({ candidates }: ManageCandidatesClientPro
 
   // Set TopBar details dynamically
   useEffect(() => {
-    const { setHeader, clearHeader } = useUIStore.getState();
+    const { setHeader, clearHeader, setViewSwitcher } = useUIStore.getState();
     setHeader(
       "Manage Candidates",
       "Overview of all active job seeker accounts registered on the platform."
     );
-    return () => clearHeader();
+    setViewSwitcher(true, "manage-candidate-view");
+    return () => {
+      clearHeader();
+      setViewSwitcher(false);
+    };
   }, []);
 
   const handleRowClick = (row: CandidateRow) => {
@@ -114,6 +120,112 @@ export function ManageCandidatesClient({ candidates }: ManageCandidatesClientPro
     },
   ];
 
+  const renderCandidateCard = (
+    row: CandidateRow,
+    isSelected: boolean,
+    toggleSelect: (e: React.MouseEvent) => void,
+    selectMode: boolean
+  ) => {
+    return (
+      <div
+        className={cn(
+          "relative rounded-2xl glass border p-5 flex flex-col gap-4 transition-all duration-300 hover:shadow-lg group text-left h-full",
+          isSelected
+            ? "border-primary bg-primary/5 shadow-md"
+            : "border-neutral-200/30 dark:border-neutral-800/50 bg-card hover:border-neutral-300 dark:hover:border-neutral-700"
+        )}
+      >
+        {/* Selection Checkbox */}
+        {selectMode && (
+          <button
+            onClick={toggleSelect}
+            className="absolute top-4 right-4 cursor-pointer text-muted-foreground hover:text-foreground z-10 transition-colors"
+          >
+            {isSelected ? (
+              <CheckSquare className="w-5 h-5 text-primary animate-in zoom-in-50 duration-150" />
+            ) : (
+              <Square className="w-5 h-5 text-muted-foreground hover:text-foreground" />
+            )}
+          </button>
+        )}
+
+        {/* Candidate Profile Info */}
+        <div className="flex items-center gap-3.5">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shadow-sm border border-primary/10">
+            {row.image ? (
+              <Image src={row.image} alt={row.name} fill className="object-cover" />
+            ) : (
+              row.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate">
+              {row.name}
+            </span>
+            <span className="text-[11px] text-muted-foreground truncate">{row.email}</span>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50" />
+
+        {/* Candidate Details */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 text-xs">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Job Title</span>
+            <span className="font-medium text-foreground truncate">{row.jobTitle}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Experience</span>
+            <div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-neutral-200 dark:border-neutral-700">
+                {row.experience}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Applications</span>
+            <span className="font-medium text-foreground">{row.applicationsCount}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Status</span>
+            <div>
+              {(() => {
+                const isBanned = row.status === "Banned";
+                const isInactive = row.status === "Inactive";
+                return (
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                      isBanned
+                        ? "bg-red-500/10 text-red-500 border-red-500/10"
+                        : isInactive
+                        ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/10"
+                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/10"
+                    }`}
+                  >
+                    {row.status}
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Member Since (Footer style) */}
+        <div className="mt-auto pt-2 text-[10px] text-muted-foreground flex justify-between items-center border-t border-neutral-100/50 dark:border-neutral-900/50">
+          <span>Member Since</span>
+          <span className="font-medium">
+            {new Date(row.memberSince).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full h-[calc(100vh-104px)] sm:h-[calc(100vh-112px)] flex flex-col overflow-hidden -mb-[40px] sm:-mb-[48px]">
       <DataTable
@@ -123,6 +235,7 @@ export function ManageCandidatesClient({ candidates }: ManageCandidatesClientPro
         searchKey="name"
         entityName="Candidate"
         onRowClick={handleRowClick}
+        renderCard={renderCandidateCard}
       />
     </div>
   );

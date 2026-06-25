@@ -40,7 +40,7 @@ export function CompanyLinksTab({ formData, handleNestedChange }: CompanyLinksTa
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Twitter / X Handle</label>
           <div className="relative">
@@ -61,6 +61,18 @@ export function CompanyLinksTab({ formData, handleNestedChange }: CompanyLinksTa
               value={formData.socials.facebook}
               onChange={(e) => handleNestedChange("socials", "facebook", e.target.value)}
               placeholder="facebook.com/username"
+              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
+            />
+          </div>
+        </div>
+        <div className="space-y-0.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Instagram URL/Handle</label>
+          <div className="relative">
+            <InstagramIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.socials.instagram}
+              onChange={(e) => handleNestedChange("socials", "instagram", e.target.value)}
+              placeholder="instagram.com/username"
               className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
             />
           </div>

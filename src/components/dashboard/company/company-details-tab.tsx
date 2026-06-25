@@ -1,12 +1,12 @@
 "use client";
 
 import React from "react";
-import { Building, Briefcase, MapPin, Users, Calendar, FileText } from "lucide-react";
+import { Building, Briefcase, MapPin, Users, Calendar, FileText, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface CompanyDetailsTabProps {
   formData: any;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }
 
 export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabProps) {
@@ -21,6 +21,7 @@ export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabP
               name="companyName"
               value={formData.companyName}
               onChange={handleChange}
+              placeholder="e.g. Acme Corporation"
               required
               className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
             />
@@ -34,6 +35,7 @@ export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabP
               name="industry"
               value={formData.industry}
               onChange={handleChange}
+              placeholder="e.g. Software Development"
               required
               className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
             />
@@ -50,6 +52,7 @@ export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabP
               name="location"
               value={formData.location}
               onChange={handleChange}
+              placeholder="e.g. San Francisco, CA"
               required
               className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
             />
@@ -58,14 +61,25 @@ export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabP
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Company Size</label>
           <div className="relative">
-            <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
+            <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+            <select
               name="companySize"
               value={formData.companySize}
               onChange={handleChange}
-              placeholder="e.g. 50-100 employees"
-              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
-            />
+              required
+              className="pl-11 pr-8 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold w-full border border-input focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/30 appearance-none cursor-pointer text-foreground"
+            >
+              <option value="" disabled>Select company size</option>
+              <option value="1-10 employees">1-10 employees</option>
+              <option value="11-50 employees">11-50 employees</option>
+              <option value="51-200 employees">51-200 employees</option>
+              <option value="201-500 employees">201-500 employees</option>
+              <option value="501-1000 employees">501-1000 employees</option>
+              <option value="1000+ employees">1000+ employees</option>
+            </select>
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </div>
           </div>
         </div>
       </div>
@@ -74,14 +88,25 @@ export function CompanyDetailsTab({ formData, handleChange }: CompanyDetailsTabP
         <div className="space-y-0.5">
           <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground pl-1">Company Type</label>
           <div className="relative">
-            <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
+            <Building className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
+            <select
               name="companyType"
               value={formData.companyType}
               onChange={handleChange}
-              placeholder="e.g. Private"
-              className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
-            />
+              required
+              className="pl-11 pr-8 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold w-full border border-input focus:outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/30 appearance-none cursor-pointer text-foreground"
+            >
+              <option value="" disabled>Select company type</option>
+              <option value="Private">Private</option>
+              <option value="Public">Public</option>
+              <option value="Government / PSU">Government / PSU</option>
+              <option value="Non-Profit">Non-Profit</option>
+              <option value="Sole Proprietorship">Sole Proprietorship</option>
+              <option value="Partnership">Partnership</option>
+            </select>
+            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </div>
           </div>
         </div>
         <div className="space-y-0.5">

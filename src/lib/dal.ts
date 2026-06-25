@@ -84,7 +84,7 @@ export async function getCompaniesWithUsers() {
           websiteUrl: profile.websiteUrl || "",
           companySize: profile.companySize || "N/A",
           companyType: profile.companyType || "Private", // default
-          subscription: profile.subscription || "Free",
+          subscription: profile.activePlan || profile.subscription || "Free",
           status: profile.status || "Active",
           jobsPosted: jobsCount,
           memberSince: user?.createdAt || profile.createdAt || new Date(),
@@ -128,6 +128,7 @@ export async function getCompanyDetails(companyId: string) {
     
     return JSON.parse(JSON.stringify({
       ...profile,
+      subscription: profile.activePlan || profile.subscription || "Free",
       email: user?.email || "",
       image: user?.image || null,
       memberSince: user?.createdAt || profile.createdAt,
@@ -158,6 +159,7 @@ export async function getCandidatesWithUsers() {
           jobTitle: profile.jobTitle || "Job Seeker",
           experience: profile.experience || "Not Specified",
           status: profile.status || "Active",
+          subscription: profile.activePlan || profile.subscription || "Free",
           applicationsCount: 0,
           memberSince: user?.createdAt || profile.createdAt || new Date(),
           image: user?.image || null,
@@ -190,6 +192,7 @@ export async function getCandidateDetails(candidateId: string) {
     
     return JSON.parse(JSON.stringify({
       ...profile,
+      subscription: profile.activePlan || profile.subscription || "Free",
       id: profile._id ? profile._id.toString() : profile.userId,
       name: user?.name || "Unnamed Candidate",
       email: user?.email || "",
@@ -234,6 +237,228 @@ export async function getAdminDetails(adminId: string) {
   } catch (err) {
     console.error("Failed to get admin details in DAL:", err);
     return null;
+  }
+}
+
+export async function getCompanyQuestions(companyId: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    // Find questions for this company
+    let questions = await db.collection("questions").find({ companyId }).toArray();
+    
+    // Seed default questions if none exist
+    if (questions.length === 0) {
+      // Find company name
+      const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+      const companyName = profile?.companyName || "Test Company";
+      
+      const defaultQuestions = [
+        {
+          companyId,
+          question: "Consider the following Dart code snippet:\n\nString? name = null;\nString greeting = name ?? 'Guest';\n\nWhat will be the value of greeting?",
+          type: "Mcq",
+          difficulty: "Medium",
+          categories: ["Dart", "Null Safety"],
+          status: "Active",
+          createdByName: companyName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          mcqOptions: [
+            { id: "1", text: "null", isCorrect: false },
+            { id: "2", text: "An empty string \"\"", isCorrect: false },
+            { id: "3", text: "\"Guest\"", isCorrect: true },
+            { id: "4", text: "A compile-time error will occur.", isCorrect: false }
+          ]
+        },
+        {
+          companyId,
+          question: "What is the correct sequence of the primary lifecycle methods for a StatefulWidget in Flutter?",
+          type: "Mcq",
+          difficulty: "Medium",
+          categories: ["Flutter", "State Management"],
+          status: "Active",
+          createdByName: companyName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          mcqOptions: [
+            { id: "1", text: "createState -> initState -> didChangeDependencies -> build", isCorrect: true },
+            { id: "2", text: "initState -> build -> didChangeDependencies -> dispose", isCorrect: false },
+            { id: "3", text: "createState -> didUpdateWidget -> build -> initState", isCorrect: false },
+            { id: "4", text: "initState -> build -> dispose -> didChangeDependencies", isCorrect: false }
+          ]
+        },
+        {
+          companyId,
+          question: "Which of the following best describes when the useEffect hook runs in React?",
+          type: "Mcq",
+          difficulty: "Medium",
+          categories: ["React.js", "Hooks"],
+          status: "Active",
+          createdByName: companyName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          mcqOptions: [
+            { id: "1", text: "Only when the component is unmounted.", isCorrect: false },
+            { id: "2", text: "Synchronously after all DOM mutations.", isCorrect: false },
+            { id: "3", text: "After every render by default, unless dependency array is specified.", isCorrect: true },
+            { id: "4", text: "Only when props change, regardless of dependencies.", isCorrect: false }
+          ]
+        },
+        {
+          companyId,
+          question: "Which hook from `react-router-dom` is primarily used for programmatic navigation?",
+          type: "Mcq",
+          difficulty: "Medium",
+          categories: ["React.js", "Navigation"],
+          status: "Active",
+          createdByName: companyName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          mcqOptions: [
+            { id: "1", text: "useParams", isCorrect: false },
+            { id: "2", text: "useNavigate", isCorrect: true },
+            { id: "3", text: "useLocation", isCorrect: false },
+            { id: "4", text: "useRouteMatch", isCorrect: false }
+          ]
+        },
+        {
+          companyId,
+          question: "In React.js, which of the following is used to pass data from a parent component to a child component?",
+          type: "Mcq",
+          difficulty: "Easy",
+          categories: ["React.js", "State"],
+          status: "Active",
+          createdByName: companyName,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          mcqOptions: [
+            { id: "1", text: "State", isCorrect: false },
+            { id: "2", text: "Props", isCorrect: true },
+            { id: "3", text: "Context", isCorrect: false },
+            { id: "4", text: "Redux", isCorrect: false }
+          ]
+        }
+      ];
+      
+      await db.collection("questions").insertMany(defaultQuestions);
+      questions = await db.collection("questions").find({ companyId }).toArray();
+    }
+    
+    return JSON.parse(JSON.stringify(
+      questions.map(q => ({
+        ...q,
+        id: q._id.toString()
+      }))
+    ));
+  } catch (err) {
+    console.error("Failed to get company questions in DAL:", err);
+    return [];
+  }
+}
+
+export async function getQuestionDetails(questionId: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    if (!ObjectId.isValid(questionId)) return null;
+    
+    const question = await db.collection("questions").findOne({ _id: new ObjectId(questionId) });
+    if (!question) return null;
+    
+    return JSON.parse(JSON.stringify({
+      ...question,
+      id: question._id.toString()
+    }));
+  } catch (err) {
+    console.error("Failed to get question details in DAL:", err);
+    return null;
+  }
+}
+
+export async function createQuestion(companyId: string, questionData: any) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    const companyName = profile?.companyName || "Test Company";
+    
+    const now = new Date();
+    const doc = {
+      ...questionData,
+      companyId,
+      createdByName: companyName,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    const result = await db.collection("questions").insertOne(doc);
+    return {
+      success: true,
+      id: result.insertedId.toString()
+    };
+  } catch (err) {
+    console.error("Failed to create question in DAL:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Database error" };
+  }
+}
+
+export async function updateQuestion(questionId: string, companyId: string, questionData: any) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    if (!ObjectId.isValid(questionId)) {
+      return { success: false, error: "Invalid question ID" };
+    }
+    
+    const now = new Date();
+    const updates = {
+      ...questionData,
+      updatedAt: now
+    };
+    
+    const result = await db.collection("questions").updateOne(
+      { _id: new ObjectId(questionId), companyId },
+      { $set: updates }
+    );
+    
+    if (result.matchedCount === 0) {
+      return { success: false, error: "Question not found or unauthorized" };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to update question in DAL:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Database error" };
+  }
+}
+
+export async function deleteQuestion(questionId: string, companyId: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    if (!ObjectId.isValid(questionId)) {
+      return { success: false, error: "Invalid question ID" };
+    }
+    
+    const result = await db.collection("questions").deleteOne({
+      _id: new ObjectId(questionId),
+      companyId
+    });
+    
+    if (result.deletedCount === 0) {
+      return { success: false, error: "Question not found or unauthorized" };
+    }
+    
+    return { success: true };
+  } catch (err) {
+    console.error("Failed to delete question in DAL:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Database error" };
   }
 }
 

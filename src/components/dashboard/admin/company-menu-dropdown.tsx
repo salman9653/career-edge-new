@@ -1,15 +1,45 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { 
   MoreHorizontal, ChevronRight, User, Star, Gem, Crown, 
   Trash2, ShieldCheck, ShieldX, ShieldAlert, UserCheck
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, Dialog } from "@/components/ui";
+import { useToastStore } from "@/store/useToastStore";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
-export function CompanyMenuDropdown() {
+interface CompanyMenuDropdownProps {
+  companyId: string;
+  currentStatus: string;
+  currentPlan: string;
+}
+
+export function CompanyMenuDropdown({
+  companyId,
+  currentStatus,
+  currentPlan,
+}: CompanyMenuDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(dropdownRef, () => {
+    if (isOpen) {
+      handleClose();
+    }
+  });
   const [activeSubmenu, setActiveSubmenu] = useState<"none" | "status" | "plan">("none");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [pendingAction, setPendingAction] = useState<
+    | null
+    | { type: "status"; value: string }
+    | { type: "plan"; value: string }
+    | { type: "delete" }
+  >(null);
+
+  const { addToast } = useToastStore();
+  const router = useRouter();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -21,8 +51,43 @@ export function CompanyMenuDropdown() {
     setActiveSubmenu("none");
   };
 
+  const updateCompany = async (updates: { status?: string; activePlan?: string }) => {
+    setIsUpdating(true);
+    try {
+      const response = await fetch(`/api/admin/companies/${companyId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update company");
+      }
+
+      addToast("Company details updated successfully", "success");
+      router.refresh();
+    } catch (error: any) {
+      addToast(error.message || "An error occurred", "error");
+    } finally {
+      setIsUpdating(false);
+      setPendingAction(null);
+    }
+  };
+
+  const isStatusActive = currentStatus === "Active";
+  const isStatusInactive = currentStatus === "Inactive";
+  const isStatusBanned = currentStatus === "Banned";
+
+  const isPlanFree = currentPlan === "Free";
+  const isPlanPro = currentPlan === "company-pro";
+  const isPlanProPlus = currentPlan === "company-pro+";
+  const isPlanEnterprise = currentPlan === "Enterprise";
+
   return (
-    <div className="relative">
+    <div className="relative" ref={dropdownRef}>
       <Button 
         variant="ghost" 
         size="icon" 
@@ -33,11 +98,7 @@ export function CompanyMenuDropdown() {
       </Button>
 
       {isOpen && (
-        <>
-          {/* Overlay click-away listener */}
-          <div className="fixed inset-0 z-40" onClick={handleClose} />
-          
-          <div className="absolute right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 bg-background/95 backdrop-blur-md text-left font-semibold">
+        <div className="absolute right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 bg-background/95 backdrop-blur-md text-left font-semibold">
             {/* Change Status sub-trigger */}
             <div className="relative">
               <button
@@ -55,24 +116,57 @@ export function CompanyMenuDropdown() {
               </button>
 
               {activeSubmenu === "status" && (
-                <div className="absolute right-[100%] top-0 mr-1.5 w-36 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 bg-background/95 backdrop-blur-md animate-in fade-in slide-in-from-right-2 duration-150">
+                <div className="absolute right-[100%] top-0 mr-1.5 w-38 rounded-xl border border-neutral-200/80 dark:border-neutral-800 p-1.5 shadow-2xl z-50 bg-popover text-foreground animate-in fade-in slide-in-from-right-2 duration-150">
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "status", value: "Active" });
+                      handleClose();
+                    }}
+                    disabled={isStatusActive || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isStatusActive 
+                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" /> Active
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" /> Active
+                    </div>
+                    {isStatusActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-505" />}
                   </button>
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "status", value: "Inactive" });
+                      handleClose();
+                    }}
+                    disabled={isStatusInactive || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isStatusInactive 
+                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <ShieldX className="w-4 h-4 text-amber-500" /> Inactive
+                    <div className="flex items-center gap-2">
+                      <ShieldX className="w-4 h-4 text-amber-500" /> Inactive
+                    </div>
+                    {isStatusInactive && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                   </button>
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "status", value: "Banned" });
+                      handleClose();
+                    }}
+                    disabled={isStatusBanned || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isStatusBanned 
+                        ? "bg-red-500/10 text-red-500 border border-red-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-950/20"
+                    }`}
                   >
-                    <ShieldAlert className="w-4 h-4 text-red-500" /> Banned
+                    <div className="flex items-center gap-2 text-red-500">
+                      <ShieldAlert className="w-4 h-4 text-red-500" /> Banned
+                    </div>
+                    {isStatusBanned && <span className="w-1.5 h-1.5 rounded-full bg-red-500" />}
                   </button>
                 </div>
               )}
@@ -95,30 +189,74 @@ export function CompanyMenuDropdown() {
               </button>
 
               {activeSubmenu === "plan" && (
-                <div className="absolute right-[100%] top-0 mr-1.5 w-36 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 bg-background/95 backdrop-blur-md animate-in fade-in slide-in-from-right-2 duration-150">
+                <div className="absolute right-[100%] top-0 mr-1.5 w-38 rounded-xl border border-neutral-200/80 dark:border-neutral-800 p-1.5 shadow-2xl z-50 bg-popover text-foreground animate-in fade-in slide-in-from-right-2 duration-150">
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "plan", value: "Free" });
+                      handleClose();
+                    }}
+                    disabled={isPlanFree || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isPlanFree 
+                        ? "bg-primary/10 text-primary border border-primary/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <User className="w-4 h-4 text-muted-foreground" /> Free
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-muted-foreground" /> Free
+                    </div>
+                    {isPlanFree && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                   </button>
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "plan", value: "company-pro" });
+                      handleClose();
+                    }}
+                    disabled={isPlanPro || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isPlanPro 
+                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <Star className="w-4 h-4 text-amber-500" /> Pro
+                    <div className="flex items-center gap-2">
+                      <Star className="w-4 h-4 text-amber-500" /> Pro
+                    </div>
+                    {isPlanPro && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                   </button>
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "plan", value: "company-pro+" });
+                      handleClose();
+                    }}
+                    disabled={isPlanProPlus || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isPlanProPlus 
+                        ? "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <Gem className="w-4 h-4 text-indigo-500" /> Pro+
+                    <div className="flex items-center gap-2">
+                      <Gem className="w-4 h-4 text-indigo-500" /> Pro+
+                    </div>
+                    {isPlanProPlus && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
                   </button>
                   <button
-                    onClick={handleClose}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg cursor-pointer transition-colors text-left"
+                    onClick={() => {
+                      setPendingAction({ type: "plan", value: "Enterprise" });
+                      handleClose();
+                    }}
+                    disabled={isPlanEnterprise || isUpdating}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left ${
+                      isPlanEnterprise 
+                        ? "bg-violet-500/10 text-violet-500 border border-violet-500/20" 
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    }`}
                   >
-                    <Crown className="w-4 h-4 text-violet-500" /> Enterprise
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-violet-500" /> Enterprise
+                    </div>
+                    {isPlanEnterprise && <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />}
                   </button>
                 </div>
               )}
@@ -128,13 +266,77 @@ export function CompanyMenuDropdown() {
 
             {/* Delete Company option */}
             <button
-              onClick={handleClose}
+              onClick={() => {
+                setPendingAction({ type: "delete" });
+                handleClose();
+              }}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors text-left"
             >
               <Trash2 className="w-4 h-4 text-red-500" /> Delete Company
             </button>
           </div>
-        </>
+      )}
+
+      {/* Confirmation Modal */}
+      {pendingAction && (
+        <Dialog 
+          isOpen={pendingAction !== null} 
+          onClose={() => setPendingAction(null)}
+          className="max-w-md"
+        >
+          <div className="space-y-4 text-left">
+            <h3 className="text-lg font-bold text-foreground">
+              {pendingAction.type === "delete" ? "Delete Company Profile" : "Confirm Changes"}
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {pendingAction.type === "status" && (
+                <>Are you sure you want to change the company's status to <span className="font-bold text-foreground">{pendingAction.value}</span>?</>
+              )}
+              {pendingAction.type === "plan" && (
+                <>Are you sure you want to change the company's subscription plan to <span className="font-bold text-foreground">{pendingAction.value === "company-pro" ? "Pro" : pendingAction.value === "company-pro+" ? "Pro+" : pendingAction.value}</span>?</>
+              )}
+              {pendingAction.type === "delete" && (
+                <>Are you sure you want to delete this company? This action is permanent and cannot be undone.</>
+              )}
+            </p>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPendingAction(null)}
+                className="rounded-xl font-bold cursor-pointer"
+              >
+                Cancel
+              </Button>
+              {pendingAction.type === "delete" ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled
+                  className="rounded-xl font-bold cursor-not-allowed opacity-50"
+                >
+                  Delete (Disabled)
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  disabled={isUpdating}
+                  onClick={() => {
+                    if (pendingAction.type === "status") {
+                      updateCompany({ status: pendingAction.value });
+                    } else if (pendingAction.type === "plan") {
+                      updateCompany({ activePlan: pendingAction.value });
+                    }
+                  }}
+                  className="rounded-xl font-bold cursor-pointer"
+                >
+                  {isUpdating ? "Confirming..." : "Confirm"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </Dialog>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { Plus, Trash, Briefcase, Building, Calendar, FileText } from "lucide-rea
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const JOB_TYPE_OPTIONS = [
   { value: "Full-time", label: "Full-time" },
@@ -26,10 +27,12 @@ interface EmploymentItem {
 interface CandidateEmploymentTabProps {
   formData: any;
   updateField: (key: string, value: any) => void;
+  onEmploymentAutoSaved: (updatedEmployment: any[]) => void;
 }
 
-export function CandidateEmploymentTab({ formData, updateField }: CandidateEmploymentTabProps) {
+export function CandidateEmploymentTab({ formData, updateField, onEmploymentAutoSaved }: CandidateEmploymentTabProps) {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [newEmp, setNewEmp] = useState<EmploymentItem>({
     designation: "",
     company: "",
@@ -40,10 +43,42 @@ export function CandidateEmploymentTab({ formData, updateField }: CandidateEmplo
     currentlyWorking: false,
   });
 
+  const saveEmploymentToDb = async (updatedEmployment: EmploymentItem[]) => {
+    setSaveStatus("saving");
+    try {
+      const body = {
+        ...formData,
+        employment: updatedEmployment,
+        jobTitle: formData.career.jobTitle || formData.jobTitle
+      };
+      
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save");
+      }
+      
+      onEmploymentAutoSaved(updatedEmployment);
+      setSaveStatus("saved");
+      setTimeout(() => {
+        setSaveStatus("idle");
+      }, 2000);
+    } catch (err) {
+      console.error("Auto-save employment error:", err);
+      setSaveStatus("error");
+    }
+  };
+
   const handleAddEmp = () => {
     if (!newEmp.designation.trim() || !newEmp.company.trim()) return;
     const current = formData.employment || [];
-    updateField("employment", [...current, newEmp]);
+    const updated = [...current, newEmp];
+    updateField("employment", updated);
     setNewEmp({
       designation: "",
       company: "",
@@ -54,18 +89,40 @@ export function CandidateEmploymentTab({ formData, updateField }: CandidateEmplo
       currentlyWorking: false,
     });
     setShowAddForm(false);
+    saveEmploymentToDb(updated);
   };
 
   const removeEmp = (index: number) => {
     const current = formData.employment || [];
-    updateField("employment", current.filter((_: any, i: number) => i !== index));
+    const updated = current.filter((_: any, i: number) => i !== index);
+    updateField("employment", updated);
+    saveEmploymentToDb(updated);
   };
 
   return (
     <div className="space-y-6 text-left font-semibold text-xs text-foreground">
-      <div className="flex justify-between items-center">
-        <label className="text-[10px] uppercase text-muted-foreground">Employment History</label>
-        {!showAddForm && (
+      {/* Title & Subtitle */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-extrabold text-foreground">Employment</h3>
+            {saveStatus !== "idle" && (
+              <span className={`text-[10px] font-bold ${
+                saveStatus === "saving" ? "text-indigo-500 animate-pulse" :
+                saveStatus === "saved" ? "text-emerald-500" :
+                "text-rose-500"
+              }`}>
+                {saveStatus === "saving" ? "Saving..." :
+                 saveStatus === "saved" ? "Saved!" :
+                 "Failed to save"}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground font-medium">
+            Detail your professional experience.
+          </p>
+        </div>
+        {!showAddForm && (formData.employment || []).length > 0 && (
           <Button
             type="button"
             onClick={() => setShowAddForm(true)}
@@ -122,25 +179,25 @@ export function CandidateEmploymentTab({ formData, updateField }: CandidateEmplo
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">Joined Date</label>
               <div className="relative">
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none z-10" />
+                <DatePicker
                   value={newEmp.joinedDate}
-                  onChange={(e) => setNewEmp(prev => ({ ...prev, joinedDate: e.target.value }))}
-                  placeholder="e.g. June 2023"
-                  className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
+                  onChange={(val) => setNewEmp(prev => ({ ...prev, joinedDate: val }))}
+                  placeholder="Select joined date"
+                  className="pl-11"
                 />
               </div>
             </div>
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground pl-1">Left Date</label>
               <div className="relative">
-                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
+                <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none z-10" />
+                <DatePicker
                   value={newEmp.currentlyWorking ? "" : newEmp.leftDate}
-                  onChange={(e) => setNewEmp(prev => ({ ...prev, leftDate: e.target.value }))}
-                  placeholder="e.g. Present"
+                  onChange={(val) => setNewEmp(prev => ({ ...prev, leftDate: val }))}
                   disabled={newEmp.currentlyWorking}
-                  className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl text-xs font-semibold"
+                  placeholder={newEmp.currentlyWorking ? "Present" : "Select left date"}
+                  className="pl-11"
                 />
               </div>
             </div>
@@ -226,18 +283,32 @@ export function CandidateEmploymentTab({ formData, updateField }: CandidateEmplo
                 type="button"
                 onClick={() => removeEmp(index)}
                 variant="ghost"
-                size="sm"
-                className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 rounded-lg cursor-pointer"
+                size="icon"
+                className="h-10 w-10 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 dark:hover:bg-rose-500/20 rounded-xl cursor-pointer shrink-0 flex items-center justify-center"
               >
-                <Trash className="w-4 h-4" />
+                <Trash className="w-5 h-5" />
               </Button>
             </div>
           ))
-        ) : (
-          <div className="p-4 bg-neutral-100/10 dark:bg-neutral-900/10 rounded-2xl border border-neutral-250/20 dark:border-neutral-750/10 text-xs text-muted-foreground font-medium text-center">
-            No employment history listed yet. Click "Add Experience" to add one.
+        ) : !showAddForm ? (
+          <div className="border border-dashed border-neutral-200 dark:border-neutral-800/80 bg-neutral-50/20 dark:bg-neutral-950/10 rounded-3xl p-10 flex flex-col items-center justify-center text-center space-y-4">
+            <Briefcase className="w-10 h-10 text-slate-700 dark:text-slate-300 stroke-[1.5]" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-extrabold text-foreground">No Employment Yet</h4>
+              <p className="text-xs text-muted-foreground font-medium max-w-md">
+                You haven't created any work experience yet, Add your work experience.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => setShowAddForm(true)}
+              variant="secondary"
+              className="text-xs font-bold px-5 py-2.5 h-10 rounded-xl gap-1.5 cursor-pointer shadow-sm border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-100/50 dark:bg-neutral-900/50 hover:bg-neutral-250/60 dark:hover:bg-neutral-800/80"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Employment
+            </Button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

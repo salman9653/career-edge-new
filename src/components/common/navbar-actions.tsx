@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,12 +9,20 @@ import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/store/useUIStore";
 import { ThemeToggle } from "./theme-toggle";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 export function NavbarActions() {
   const pathname = usePathname();
   const router = useRouter();
   const openModal = useUIStore((state) => state.openModal);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(dropdownRef, () => {
+    if (dropdownOpen) {
+      setDropdownOpen(false);
+    }
+  });
 
   const { data: session, isPending } = authClient.useSession();
 
@@ -44,7 +52,7 @@ export function NavbarActions() {
       {/* Auth Buttons: Conditional rendering based on session */}
       {!isPending && (
         session ? (
-          <div className="relative">
+          <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
               className="flex items-center space-x-2 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 transition-all cursor-pointer bg-neutral-50/50 dark:bg-neutral-950/20"
@@ -70,11 +78,6 @@ export function NavbarActions() {
             </button>
 
             {dropdownOpen && (
-              <>
-                {/* Backdrop for closing dropdown */}
-                <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
-
-                {/* Dropdown Menu */}
                 <div className="absolute right-0 mt-2.5 w-60 rounded-2xl glass border border-neutral-200/60 dark:border-neutral-800/60 bg-background shadow-xl p-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center space-x-3 p-2 border-b border-neutral-100 dark:border-neutral-900 pb-3 mb-2">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md overflow-hidden relative">
@@ -114,7 +117,6 @@ export function NavbarActions() {
                     <LogOut className="w-4 h-4" /> Log Out
                   </button>
                 </div>
-              </>
             )}
           </div>
         ) : (

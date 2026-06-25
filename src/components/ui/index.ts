@@ -7,4 +7,5 @@ export type { InputProps } from "./input";
 export { Toaster } from "./toaster";
 export { Select } from "./select";
 export { Sheet } from "./sheet";
+export { DatePicker } from "./date-picker";
 

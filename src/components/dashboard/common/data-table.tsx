@@ -5,6 +5,9 @@ import { DataTableToolbar } from "./data-table-toolbar";
 import { ExportDialog } from "./export-dialog";
 import { FilterSheet, FilterConfig } from "./filter-sheet";
 import { DataTableContent } from "./data-table-content";
+import { DataTableCards } from "./data-table-cards";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useUIStore } from "@/store/useUIStore";
 
 export interface ColumnDef<T> {
   key: string;
@@ -22,6 +25,12 @@ interface DataTableProps<T> {
   filterConfigs?: FilterConfig[];
   primaryAction?: { label: string; onClick: () => void };
   onRowClick?: (row: T) => void;
+  renderCard?: (
+    row: T,
+    isSelected: boolean,
+    toggleSelect: (e: React.MouseEvent) => void,
+    selectMode: boolean
+  ) => React.ReactNode;
 }
 
 const DEFAULT_OPTIONS: Record<string, string[]> = {
@@ -38,7 +47,12 @@ export function DataTable<T extends Record<string, any>>({
   filterConfigs,
   primaryAction,
   onRowClick,
+  renderCard,
 }: DataTableProps<T>) {
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const { viewMode } = useUIStore();
+  const activeViewMode = isMobile ? "card" : viewMode;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -91,7 +105,11 @@ export function DataTable<T extends Record<string, any>>({
         const lowerVals = vals.map((v) => v.toLowerCase());
         result = result.filter((r) => {
           const val = r[key];
-          return val !== undefined && val !== null && lowerVals.includes(String(val).toLowerCase());
+          if (val === undefined || val === null) return false;
+          if (Array.isArray(val)) {
+            return val.some((v) => lowerVals.includes(String(v).toLowerCase()));
+          }
+          return lowerVals.includes(String(val).toLowerCase());
         });
       }
     });
@@ -141,6 +159,10 @@ export function DataTable<T extends Record<string, any>>({
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
+  const sortableColumns = useMemo(() => {
+    return columns.filter((col) => col.sortable).map((col) => ({ key: col.key, label: col.label }));
+  }, [columns]);
+
   return (
     <div className="w-full flex-1 flex flex-col min-h-0 space-y-4">
       <DataTableToolbar
@@ -152,12 +174,25 @@ export function DataTable<T extends Record<string, any>>({
         primaryAction={primaryAction}
         appliedFiltersCount={Object.values(appliedFilters).reduce((acc, curr) => acc + curr.length, 0)}
         onClearFilters={() => { setTempFilters({}); setAppliedFilters({}); }}
+        viewMode={activeViewMode}
+        sortableColumns={sortableColumns}
+        sortKey={sortKey}
+        sortOrder={sortOrder}
+        onSort={handleSort}
       />
-      <DataTableContent
-        columns={columns} processedData={processedData} selectMode={selectMode}
-        selectedIds={selectedIds} toggleSelectAll={toggleSelectAll} toggleSelectRow={toggleSelectRow}
-        handleSort={handleSort} onRowClick={onRowClick}
-      />
+      {activeViewMode === "list" ? (
+        <DataTableContent
+          columns={columns} processedData={processedData} selectMode={selectMode}
+          selectedIds={selectedIds} toggleSelectAll={toggleSelectAll} toggleSelectRow={toggleSelectRow}
+          handleSort={handleSort} onRowClick={onRowClick}
+        />
+      ) : (
+        <DataTableCards
+          columns={columns} processedData={processedData} selectMode={selectMode}
+          selectedIds={selectedIds} toggleSelectRow={toggleSelectRow}
+          onRowClick={onRowClick} renderCard={renderCard}
+        />
+      )}
       <ExportDialog
         isOpen={isExportDialogOpen} onClose={() => setIsExportDialogOpen(false)}
         entityName={entityName} selectMode={selectMode} selectedCount={selectedIds.size}

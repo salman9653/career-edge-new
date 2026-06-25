@@ -53,15 +53,15 @@ export function EditCompanyProfileForm({ initialProfile }: CompanyProfileFormPro
       indeed: initialProfile.socials?.indeed || "",
     },
     contact: {
-      email: initialProfile.contact?.email || initialProfile.email || "",
-      phone: initialProfile.contact?.phone || initialProfile.phone || "",
+      email: initialProfile.contact?.email || "",
+      phone: initialProfile.contact?.phone || "",
     }
   };
 
   const [formData, setFormData] = useState<typeof initialSavedData>(JSON.parse(JSON.stringify(initialSavedData)));
   const [savedData, setSavedData] = useState<typeof initialSavedData>(initialSavedData);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };

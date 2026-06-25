@@ -184,15 +184,35 @@ export function EditCandidateProfileForm({ initialProfile, name }: CandidateForm
     }
   };
 
+  const handleSkillsAutoSaved = (updatedSkills: string[]) => {
+    setSavedData(prev => ({ ...prev, skills: updatedSkills }));
+  };
+
+  const handleResumeAutoSaved = (resumeName: string, resumeBase64: string) => {
+    setSavedData(prev => ({ ...prev, resumeName, resumeBase64 }));
+  };
+
+  const handleEmploymentAutoSaved = (updatedEmployment: any[]) => {
+    setSavedData(prev => ({ ...prev, employment: updatedEmployment }));
+  };
+
+  const handleEducationAutoSaved = (updatedEducation: any[]) => {
+    setSavedData(prev => ({ ...prev, education: updatedEducation }));
+  };
+
+  const handleProjectsAutoSaved = (updatedProjects: any[]) => {
+    setSavedData(prev => ({ ...prev, projects: updatedProjects }));
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "profile": return <CandidateDetailsTab formData={formData} updateField={updateField} />;
       case "career": return <CandidateCareerTab formData={formData} updateField={updateField} />;
-      case "resume": return <CandidateResumeTab formData={formData} updateField={updateField} />;
-      case "skills": return <CandidateSkillsTab formData={formData} updateField={updateField} />;
-      case "employment": return <CandidateEmploymentTab formData={formData} updateField={updateField} />;
-      case "education": return <CandidateEducationTab formData={formData} updateField={updateField} />;
-      case "projects": return <CandidateProjectsTab formData={formData} updateField={updateField} />;
+      case "resume": return <CandidateResumeTab formData={formData} updateField={updateField} onResumeAutoSaved={handleResumeAutoSaved} updatedAt={initialProfile.updatedAt} />;
+      case "skills": return <CandidateSkillsTab formData={formData} updateField={updateField} onSkillsAutoSaved={handleSkillsAutoSaved} />;
+      case "employment": return <CandidateEmploymentTab formData={formData} updateField={updateField} onEmploymentAutoSaved={handleEmploymentAutoSaved} />;
+      case "education": return <CandidateEducationTab formData={formData} updateField={updateField} onEducationAutoSaved={handleEducationAutoSaved} />;
+      case "projects": return <CandidateProjectsTab formData={formData} updateField={updateField} onProjectsAutoSaved={handleProjectsAutoSaved} />;
       case "socials": return <CandidateSocialsTab formData={formData} updateField={updateField} />;
       case "personal": return <CandidatePersonalTab formData={formData} updateField={updateField} />;
       default: return null;
@@ -259,21 +279,23 @@ export function EditCandidateProfileForm({ initialProfile, name }: CandidateForm
               </div>
 
               {/* Section-specific Save Changes Button */}
-              <div className="flex items-center justify-end gap-3 border-t border-neutral-200/20 dark:border-neutral-800/30 pt-4 mt-6">
-                {showSuccess && (
-                  <span className="text-[11px] text-emerald-500 font-bold animate-pulse">
-                    Saved successfully!
-                  </span>
-                )}
-                <Button
-                  type="submit"
-                  disabled={loading || !isSectionDirty(activeTab)}
-                  className="h-8.5 px-4 text-[11px] font-bold gap-1.5 rounded-xl cursor-pointer"
-                >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Save Changes
-                </Button>
-              </div>
+              {activeTab !== "skills" && activeTab !== "resume" && activeTab !== "employment" && activeTab !== "education" && activeTab !== "projects" && (
+                <div className="flex items-center justify-end gap-3 border-t border-neutral-200/20 dark:border-neutral-800/30 pt-4 mt-6">
+                  {showSuccess && (
+                    <span className="text-[11px] text-emerald-500 font-bold animate-pulse">
+                      Saved successfully!
+                    </span>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={loading || !isSectionDirty(activeTab)}
+                    className="h-8.5 px-4 text-[11px] font-bold gap-1.5 rounded-xl cursor-pointer"
+                  >
+                    {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save Changes
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </form>
