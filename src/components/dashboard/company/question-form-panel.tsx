@@ -129,7 +129,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch h-full min-h-0 w-full">
-        
+
         {/* Custom Question Panel */}
         <div className={cn(
           "glass border border-neutral-200/40 dark:border-neutral-800/80 rounded-2xl p-6 text-left bg-card shadow-xl h-full overflow-hidden flex flex-col",
@@ -316,7 +316,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
 
                 {/* Actions inside Scrollable Container */}
                 <div className="flex justify-between items-center border-t border-neutral-200/20 dark:border-neutral-800/50 pt-5 mt-4">
-                  <button
+                  {/* <button
                     type="button"
                     onClick={() => {
                       setAiJobTitle("React.js Developer");
@@ -328,7 +328,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
                     className="bg-yellow-400 text-black border-2 border-dashed border-red-500 font-mono text-[9px] px-2 py-1 rounded-none hover:bg-red-500 hover:text-white cursor-pointer active:bg-black"
                   >
                     DEV FILL FORM
-                  </button>
+                  </button> */}
                   <Button
                     type="submit"
                     className="font-bold bg-ai-gradient hover:opacity-90 text-white flex items-center justify-center gap-2 cursor-pointer h-10 px-5 rounded-lg shadow-md border-0 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
