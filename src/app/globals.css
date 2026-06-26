@@ -206,3 +206,48 @@ select:active {
   pointer-events: none;
   z-index: 10;
 }
+
+/* Rotating Gradient Border for AI Processing state */
+@keyframes spin-gradient {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-gradient {
+  animation: spin-gradient 4s linear infinite;
+}
+
+/* Curation Interactive Flash Animations */
+@keyframes approve-flash {
+  0% {
+    box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.4);
+    border-color: rgba(34, 197, 94, 0.5) !important;
+    background-color: rgba(34, 197, 94, 0.05);
+  }
+  100% {
+    box-shadow: 0 0 0 24px rgba(34, 197, 94, 0);
+    border-color: rgba(34, 197, 94, 0.2) !important;
+    background-color: rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes reject-flash {
+  0% {
+    box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    background-color: rgba(239, 68, 68, 0.05);
+  }
+  100% {
+    box-shadow: 0 0 0 24px rgba(239, 68, 68, 0);
+    border-color: rgba(239, 68, 68, 0.2) !important;
+    background-color: rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-approve-flash {
+  animation: approve-flash 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-reject-flash {
+  animation: reject-flash 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1,7 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import { getQuestionDetails } from "@/lib/dal";
-import { QuestionFormPanel } from "@/components/dashboard/company/question-form-panel";
+import { CustomQuestionForm } from "@/components/dashboard/company/custom-question-form";
 
 interface PageProps {
   params: Promise<{
@@ -17,5 +17,6 @@ export default async function EditQuestionPage({ params }: PageProps) {
     notFound();
   }
 
-  return <QuestionFormPanel mode="edit" question={question} />;
+  return <CustomQuestionForm mode="edit" question={question} />;
 }
+

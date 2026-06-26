@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { createQuestion } from "@/lib/dal";
 import clientPromise from "@/lib/db";
+import { generateQuestions } from "@/lib/gemini";
+import { ObjectId } from "mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -21,89 +23,60 @@ export async function POST(request: Request) {
     const companyId = session.user.id;
     const body = await request.json();
 
-    // Check if this is a request to generate questions via AI (Mock)
-    if (body.generateAI) {
-      const { jobTitle = "Software Engineer", keySkills = "JavaScript", difficulty = "Medium", count = 3 } = body;
-      const skillsArray = keySkills.split(",").map((s: string) => s.trim()).filter(Boolean);
-      const primarySkill = skillsArray[0] || "JavaScript";
-      const secondarySkill = skillsArray[1] || "React";
+    // Check if this is a request to save a batch of approved questions
+    if (body.batchSave) {
+      const { questions } = body;
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        return NextResponse.json({ error: "No questions provided for batch save" }, { status: 400 });
+      }
 
-      // Mock questions templates
-      const templates = [
-        {
-          question: `In a production ${jobTitle} codebase, which of the following practices best optimizes the performance of a module heavily relying on ${primarySkill}?`,
-          type: "Mcq",
-          difficulty: difficulty,
-          categories: [primarySkill, "Performance"],
-          status: "Active",
-          mcqOptions: [
-            { id: "1", text: "Implementing lazy-loading and code-splitting for sub-routes.", isCorrect: true },
-            { id: "2", text: "Moving all computational logic to synchronous block operations.", isCorrect: false },
-            { id: "3", text: "Avoiding modular files and packing all logic inside a single bundle.", isCorrect: false },
-            { id: "4", text: "Disabling browser cache headers for all dynamic chunks.", isCorrect: false }
-          ]
-        },
-        {
-          question: `When designing type definitions or schemas in a ${primarySkill} application, what is the primary benefit of using strict configuration rules?`,
-          type: "Mcq",
-          difficulty: difficulty,
-          categories: [primarySkill, "Architecture"],
-          status: "Active",
-          mcqOptions: [
-            { id: "1", text: "Catching potential type mismatches and undefined references during compile-time rather than runtime.", isCorrect: true },
-            { id: "2", text: "Completely eliminating the need for integration testing.", isCorrect: false },
-            { id: "3", text: "Making the final Javascript bundle run faster in browser V8 engines.", isCorrect: false },
-            { id: "4", text: "Allowing automatic code deployment without developer reviews.", isCorrect: false }
-          ]
-        },
-        {
-          question: `Which of the following describes a common state management bottleneck in a scale application utilizing ${secondarySkill}?`,
-          type: "Mcq",
-          difficulty: difficulty,
-          categories: [secondarySkill, "State Management"],
-          status: "Active",
-          mcqOptions: [
-            { id: "1", text: "Unnecessary component re-renders caused by lack of selector-based state subscriptions.", isCorrect: true },
-            { id: "2", text: "Exceeding the browser localStorage capacity with state slices.", isCorrect: false },
-            { id: "3", text: "Using standard React context instead of heavy external libraries.", isCorrect: false },
-            { id: "4", text: "Exposing the store actions to the local DOM tree.", isCorrect: false }
-          ]
-        },
-        {
-          question: `A senior engineer is reviewing a pull request for a ${jobTitle} role. They note that the asynchronous handlers for ${primarySkill} could block the main event thread. How would you refactor this?`,
-          type: "Mcq",
-          difficulty: difficulty,
-          categories: [primarySkill, "Asynchronous"],
-          status: "Active",
-          mcqOptions: [
-            { id: "1", text: "Refactoring callbacks to asynchronous non-blocking async/await functions or utilising Web Workers.", isCorrect: true },
-            { id: "2", text: "Using while loops to force sleep intervals.", isCorrect: false },
-            { id: "3", text: "Converting all operations to execute on the main thread sequentially.", isCorrect: false },
-            { id: "4", text: "Relying on standard CSS animations to defer background operations.", isCorrect: false }
-          ]
-        }
-      ];
-
-      // Slice the templates based on count requested
-      const questionsToInsert = templates.slice(0, Math.min(count, templates.length));
-      
       const client = await clientPromise;
       const db = client.db();
       const profile = await db.collection("company_profiles").findOne({ userId: companyId });
       const companyName = profile?.companyName || "Test Company";
 
       const now = new Date();
-      const docs = questionsToInsert.map(q => ({
-        ...q,
+      const docs = questions.map((q: any) => ({
         companyId,
+        question: q.question,
+        type: q.type || "Mcq",
+        difficulty: q.difficulty || "Medium",
+        categories: Array.isArray(q.categories) ? q.categories : [],
+        status: q.status || "Active",
+        mcqOptions: q.mcqOptions || [],
         createdByName: companyName,
         createdAt: now,
-        updatedAt: now
+        updatedAt: now,
       }));
 
       await db.collection("questions").insertMany(docs);
-      
       return NextResponse.json({ success: true, count: docs.length });
+    }
+
+    // Check if this is a request to generate questions via AI
+    if (body.generateAI) {
+      const { jobTitle = "Software Engineer", keySkills = "JavaScript", difficulty = "Medium", count = 3 } = body;
+      const countNum = Math.max(1, Math.min(10, count));
+
+      // Generate the questions from Gemini
+      const generated = await generateQuestions(jobTitle, keySkills, difficulty, countNum);
+
+      // Perform exact-match deduplication against database
+      const client = await clientPromise;
+      const db = client.db();
+      
+      const questionTexts = generated.map(q => q.question);
+      const existing = await db.collection("questions").find({
+        companyId,
+        question: { $in: questionTexts }
+      }).toArray();
+
+      const existingTexts = new Set(existing.map(q => q.question.toLowerCase().trim()));
+      
+      // Filter out duplicates
+      const uniqueQuestions = generated.filter(q => !existingTexts.has(q.question.toLowerCase().trim()));
+
+      return NextResponse.json({ success: true, questions: uniqueQuestions });
     }
 
     // Otherwise, create a single custom question
@@ -145,6 +118,59 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, id: result.id });
   } catch (err: unknown) {
     console.error("POST /api/questions error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (session.user.accountType !== "company") {
+      return NextResponse.json({ error: "Only companies can manage questions" }, { status: 403 });
+    }
+
+    const companyId = session.user.id;
+    const body = await request.json();
+    const { ids } = body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: "No question IDs provided" }, { status: 400 });
+    }
+
+    const objectIds = ids
+      .map((id: string) => {
+        try {
+          return new ObjectId(id);
+        } catch (err) {
+          return null;
+        }
+      })
+      .filter((id): id is ObjectId => id !== null);
+
+    if (objectIds.length === 0) {
+      return NextResponse.json({ error: "Invalid question IDs" }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db();
+    const result = await db.collection("questions").deleteMany({
+      _id: { $in: objectIds },
+      companyId: companyId
+    });
+
+    return NextResponse.json({ success: true, count: result.deletedCount });
+  } catch (err: unknown) {
+    console.error("DELETE /api/questions error:", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Internal Server Error" },
       { status: 500 }

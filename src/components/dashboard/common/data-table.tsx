@@ -8,6 +8,7 @@ import { DataTableContent } from "./data-table-content";
 import { DataTableCards } from "./data-table-cards";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/store/useUIStore";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export interface ColumnDef<T> {
   key: string;
@@ -31,6 +32,7 @@ interface DataTableProps<T> {
     toggleSelect: (e: React.MouseEvent) => void,
     selectMode: boolean
   ) => React.ReactNode;
+  onDeleteSelected?: (ids: string[]) => void | boolean | Promise<void | boolean>;
 }
 
 const DEFAULT_OPTIONS: Record<string, string[]> = {
@@ -48,6 +50,7 @@ export function DataTable<T extends Record<string, any>>({
   primaryAction,
   onRowClick,
   renderCard,
+  onDeleteSelected,
 }: DataTableProps<T>) {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { viewMode } = useUIStore();
@@ -62,6 +65,34 @@ export function DataTable<T extends Record<string, any>>({
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [tempFilters, setTempFilters] = useState<Record<string, string[]>>({});
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string[]>>({});
+
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+
+  const handleDeleteSelected = () => {
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteSelected = async () => {
+    setIsDeletingSelected(true);
+    try {
+      if (onDeleteSelected) {
+        const result = await onDeleteSelected(Array.from(selectedIds));
+        if (result === false) {
+          // If result is explicitly false, delete failed - do not clear selection
+          return;
+        }
+      }
+      setSelectedIds(new Set());
+      setSelectMode(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete selected items");
+    } finally {
+      setIsDeletingSelected(false);
+      setIsDeleteConfirmOpen(false);
+    }
+  };
 
   const computedFilterConfigs = useMemo(() => {
     if (filterConfigs && filterConfigs.length > 0) return filterConfigs;
@@ -179,6 +210,7 @@ export function DataTable<T extends Record<string, any>>({
         sortKey={sortKey}
         sortOrder={sortOrder}
         onSort={handleSort}
+        onDeleteSelected={onDeleteSelected ? handleDeleteSelected : undefined}
       />
       {activeViewMode === "list" ? (
         <DataTableContent
@@ -207,6 +239,16 @@ export function DataTable<T extends Record<string, any>>({
         }}
         onClearFilters={() => { setTempFilters({}); setAppliedFilters({}); setIsFilterSheetOpen(false); }}
         onApplyFilters={() => { setAppliedFilters(tempFilters); setIsFilterSheetOpen(false); }}
+      />
+      <ConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={confirmDeleteSelected}
+        title={`Delete Selected ${entityName}s`}
+        description={`Are you sure you want to delete ${selectedIds.size} selected ${entityName.toLowerCase()}${selectedIds.size > 1 ? "s" : ""}? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="destructive"
+        isLoading={isDeletingSelected}
       />
     </div>
   );

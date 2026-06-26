@@ -2,9 +2,9 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Edit3, Trash2, Calendar, Tag, Shield, Clock, HelpCircle, ArrowLeft, X } from "lucide-react";
+import { Edit3, Trash2, Calendar, Tag, Shield, Clock, HelpCircle, ArrowLeft, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button, ConfirmDialog } from "@/components/ui";
 
 interface QuestionDetail {
   id: string;
@@ -31,6 +31,57 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusMenuRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleStatusChange = async (nextStatus: "Active" | "Inactive") => {
+    setShowStatusDropdown(false);
+    if ((question.status || "Active") === nextStatus) return;
+
+    setIsTogglingStatus(true);
+    const payload = {
+      question: question.question,
+      type: question.type,
+      difficulty: question.difficulty,
+      categories: question.categories,
+      status: nextStatus,
+      mcqOptions: question.mcqOptions || [],
+    };
+
+    try {
+      const res = await fetch(`/api/questions/${question.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        startTransition(() => {
+          router.refresh();
+        });
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update status");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while updating the status.");
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
 
   const handleEdit = () => {
     router.push(`/dashboard/questions/${question.id}/edit`);
@@ -77,46 +128,20 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
           <p className="text-xs text-muted-foreground mt-0.5">Review the details and options.</p>
         </div>
         <div className="flex items-center gap-2">
-          {!confirmDelete ? (
-            <>
-              <button
-                onClick={handleEdit}
-                className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 text-muted-foreground hover:text-foreground cursor-pointer transition-colors border border-neutral-200/40 dark:border-neutral-800/40"
-                title="Edit Question"
-              >
-                <Edit3 className="w-4.5 h-4.5" />
-              </button>
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 cursor-pointer transition-colors border border-neutral-200/40 dark:border-neutral-800/40"
-                title="Delete Question"
-              >
-                <Trash2 className="w-4.5 h-4.5" />
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-1.5 animate-in fade-in duration-200">
-              <span className="text-[10px] text-red-500 font-bold mr-1">Delete?</span>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="h-7 text-[10px] px-2.5"
-              >
-                {isDeleting ? "Deleting..." : "Yes"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDelete(false)}
-                disabled={isDeleting}
-                className="h-7 text-[10px] px-2.5 border border-neutral-200 dark:border-neutral-800"
-              >
-                No
-              </Button>
-            </div>
-          )}
+          <button
+            onClick={handleEdit}
+            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 text-muted-foreground hover:text-foreground cursor-pointer transition-colors border border-neutral-200/40 dark:border-neutral-800/40"
+            title="Edit Question"
+          >
+            <Edit3 className="w-4.5 h-4.5" />
+          </button>
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 cursor-pointer transition-colors border border-neutral-200/40 dark:border-neutral-800/40"
+            title="Delete Question"
+          >
+            <Trash2 className="w-4.5 h-4.5" />
+          </button>
           <button
             onClick={() => router.push("/dashboard/questions")}
             className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 text-muted-foreground hover:text-foreground cursor-pointer transition-colors border border-neutral-200/40 dark:border-neutral-800/40"
@@ -129,57 +154,137 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
 
       {/* Meta Grid info */}
       <div className="grid grid-cols-2 gap-4 text-xs">
-        <div className="flex flex-col gap-1 bg-neutral-50/50 dark:bg-neutral-900/30 p-2.5 rounded-xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <HelpCircle className="w-3 h-3 text-indigo-500" /> Question Type
-          </span>
-          <span className="font-semibold text-foreground">{question.type}</span>
-        </div>
-        <div className="flex flex-col gap-1 bg-neutral-50/50 dark:bg-neutral-900/30 p-2.5 rounded-xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <Shield className="w-3 h-3 text-indigo-500" /> Status
-          </span>
-          <div>
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-500 border border-indigo-500/10">
-              {question.status || "Active"}
+        {/* Question Type */}
+        <div className="flex items-center gap-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 p-3.5 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+            <HelpCircle className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Question Type
             </span>
+            <span className="text-sm font-bold text-foreground">{question.type}</span>
           </div>
         </div>
-        <div className="flex flex-col gap-1 bg-neutral-50/50 dark:bg-neutral-900/30 p-2.5 rounded-xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <Clock className="w-3 h-3 text-indigo-500" /> Difficulty
-          </span>
-          <div>
-            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border", diffColor)}>
-              {question.difficulty}
-            </span>
+
+        {/* Status */}
+        <div ref={statusMenuRef} className="flex items-center gap-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 p-3.5 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20 relative">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+            <Shield className="w-5 h-5" />
           </div>
-        </div>
-        <div className="flex flex-col gap-1 bg-neutral-50/50 dark:bg-neutral-900/30 p-2.5 rounded-xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <Calendar className="w-3 h-3 text-indigo-500" /> Created At
-          </span>
-          <span className="font-semibold text-foreground">
-            {new Date(question.createdAt).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1 col-span-2 bg-neutral-50/50 dark:bg-neutral-900/30 p-2.5 rounded-xl border border-neutral-200/20 dark:border-neutral-800/20">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-            <Tag className="w-3 h-3 text-indigo-500" /> Categories / Topics
-          </span>
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {question.categories?.map((cat, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-neutral-200 dark:border-neutral-700"
-              >
-                {cat}
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Status
+            </span>
+            <div>
+              <span className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border gap-1.5 transition-all duration-300",
+                isTogglingStatus
+                  ? "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border-neutral-200 dark:border-neutral-700 animate-pulse"
+                  : (question.status || "Active") === "Inactive"
+                  ? "bg-red-500/10 text-red-500 border-red-500/10"
+                  : "bg-emerald-500/10 text-emerald-500 border-emerald-500/10"
+              )}>
+                {isTogglingStatus && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
+                )}
+                {isTogglingStatus ? "Updating..." : (question.status || "Active")}
               </span>
-            )) || <span className="text-muted-foreground font-medium">-</span>}
+            </div>
+          </div>
+          <button
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            disabled={isTogglingStatus}
+            className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-muted-foreground hover:text-foreground cursor-pointer transition-colors border border-transparent disabled:opacity-50 flex-shrink-0"
+            title="Edit Status"
+          >
+            {isTogglingStatus ? (
+              <div className="w-3.5 h-3.5 border-2 border-neutral-300 border-t-primary rounded-full animate-spin" />
+            ) : (
+              <Edit3 className="w-3.5 h-3.5" />
+            )}
+          </button>
+
+          {showStatusDropdown && (
+            <div className="absolute top-14 right-3 z-50 w-32 rounded-xl border border-neutral-200/60 dark:border-neutral-800/60 bg-white/95 dark:bg-[#07070b]/95 backdrop-blur-md shadow-2xl p-1 animate-in fade-in duration-150">
+              {(["Active", "Inactive"] as const).map((statusVal) => {
+                const isActive = (question.status || "Active") === statusVal;
+                return (
+                  <button
+                    key={statusVal}
+                    type="button"
+                    onClick={() => handleStatusChange(statusVal)}
+                    className={cn(
+                      "w-full text-left px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-between cursor-pointer mb-0.5 last:mb-0",
+                      isActive
+                        ? "bg-primary/10 text-primary dark:text-white"
+                        : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                    )}
+                  >
+                    <span>{statusVal}</span>
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Difficulty */}
+        <div className="flex items-center gap-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 p-3.5 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Difficulty
+            </span>
+            <div>
+              <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border", diffColor)}>
+                {question.difficulty}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Created At */}
+        <div className="flex items-center gap-3.5 bg-neutral-50/50 dark:bg-neutral-900/30 p-3.5 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Created At
+            </span>
+            <span className="text-sm font-bold text-foreground">
+              {new Date(question.createdAt).toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+        </div>
+
+        {/* Categories / Topics */}
+        <div className="flex items-start gap-3.5 col-span-2 bg-neutral-50/50 dark:bg-neutral-900/30 p-3.5 rounded-2xl border border-neutral-200/20 dark:border-neutral-800/20">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary flex-shrink-0">
+            <Tag className="w-5 h-5" />
+          </div>
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              Categories / Topics
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {question.categories?.map((cat, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border border-neutral-200 dark:border-neutral-700"
+                >
+                  {cat}
+                </span>
+              )) || <span className="text-muted-foreground font-medium text-xs">-</span>}
+            </div>
           </div>
         </div>
       </div>
@@ -207,7 +312,7 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
                 className={cn(
                   "flex items-start gap-3 p-3.5 rounded-xl border transition-colors",
                   opt.isCorrect
-                    ? "bg-indigo-500/5 border-indigo-500/30 dark:border-indigo-500/20 text-foreground"
+                    ? "bg-primary/5 border-primary/30 dark:border-primary/20 text-foreground"
                     : "bg-neutral-50/50 dark:bg-neutral-950/20 border-neutral-200/40 dark:border-neutral-800/60 text-muted-foreground"
                 )}
               >
@@ -216,7 +321,7 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
                     className={cn(
                       "w-4 h-4 rounded-full border flex items-center justify-center",
                       opt.isCorrect
-                        ? "border-indigo-500 bg-indigo-500 text-white"
+                        ? "border-primary bg-primary text-primary-foreground"
                         : "border-neutral-300 dark:border-neutral-700 bg-transparent"
                     )}
                   >
@@ -231,6 +336,17 @@ export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={handleDelete}
+        title="Delete Question"
+        description="Are you sure you want to delete this question? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

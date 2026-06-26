@@ -164,7 +164,7 @@ export function EditCompanyProfileForm({ initialProfile }: CompanyProfileFormPro
     <Card className="rounded-3xl glass border shadow-xl p-6 bg-neutral-50/20 dark:bg-neutral-950/20 w-full text-left">
       <CardHeader className="p-0 pb-4 border-b border-neutral-200/30 dark:border-neutral-850/50 mb-6">
         <CardTitle className="text-base font-extrabold flex items-center gap-2">
-          <Building className="w-5 h-5 text-indigo-500" /> Company Profile Form
+          <Building className="w-5 h-5 text-primary" /> Company Profile Form
         </CardTitle>
         <CardDescription className="text-xs">Update company info, job boards, perks, and contact methods.</CardDescription>
       </CardHeader>

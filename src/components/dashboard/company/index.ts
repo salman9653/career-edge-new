@@ -7,3 +7,5 @@ export { CompanyContactTab } from "./company-contact-tab";
 export { QuestionBankClient } from "./question-bank-client";
 export { QuestionDetailPanel } from "./question-detail-panel";
 export { QuestionFormPanel } from "./question-form-panel";
+export { CustomQuestionForm } from "./custom-question-form";
+

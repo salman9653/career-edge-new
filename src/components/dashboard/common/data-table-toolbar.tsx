@@ -29,6 +29,7 @@ interface DataTableToolbarProps {
   sortKey?: string | null;
   sortOrder?: "asc" | "desc";
   onSort?: (key: string) => void;
+  onDeleteSelected?: () => void;
 }
 
 export function DataTableToolbar({
@@ -50,6 +51,7 @@ export function DataTableToolbar({
   sortKey = null,
   sortOrder = "asc",
   onSort,
+  onDeleteSelected,
 }: DataTableToolbarProps) {
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [isBadgeHovered, setIsBadgeHovered] = useState(false);
@@ -132,13 +134,20 @@ export function DataTableToolbar({
             <Download className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="hidden sm:inline">Export</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="h-8 px-2.5 sm:px-3 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 text-xs font-bold gap-1.5 cursor-pointer flex-grow sm:flex-grow-0 justify-center"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Delete</span>
-          </Button>
+          {onDeleteSelected && (
+            <Button
+              variant="ghost"
+              onClick={onDeleteSelected}
+              disabled={selectedCount === 0}
+              className={cn(
+                "h-8 px-2.5 sm:px-3 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 text-xs font-bold gap-1.5 cursor-pointer flex-grow sm:flex-grow-0 justify-center",
+                selectedCount === 0 && "opacity-40 cursor-not-allowed pointer-events-none"
+              )}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Delete</span>
+            </Button>
+          )}
         </div>
       </div>
     );
