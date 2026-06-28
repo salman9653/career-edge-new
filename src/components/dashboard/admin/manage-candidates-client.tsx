@@ -227,7 +227,7 @@ export function ManageCandidatesClient({ candidates }: ManageCandidatesClientPro
   };
 
   return (
-    <div className="w-full h-[calc(100vh-104px)] sm:h-[calc(100vh-112px)] flex flex-col overflow-hidden -mb-[40px] sm:-mb-[48px]">
+    <div className="w-full h-[calc(100vh-88px)] sm:h-[calc(100vh-48px)] flex flex-col overflow-hidden -mb-[24px] sm:-mb-[32px]">
       <DataTable
         data={candidates}
         columns={columns}

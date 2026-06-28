@@ -13,8 +13,10 @@ import {
   CompanyContactTab
 } from "./index";
 
+import { CompanyProfile, CompanyProfileFormData } from "@/types";
+
 interface CompanyProfileFormProps {
-  initialProfile: any;
+  initialProfile: CompanyProfile;
 }
 
 const TAB_LABELS = {
@@ -58,7 +60,7 @@ export function EditCompanyProfileForm({ initialProfile }: CompanyProfileFormPro
     }
   };
 
-  const [formData, setFormData] = useState<typeof initialSavedData>(JSON.parse(JSON.stringify(initialSavedData)));
+  const [formData, setFormData] = useState<CompanyProfileFormData>(JSON.parse(JSON.stringify(initialSavedData)));
   const [savedData, setSavedData] = useState<typeof initialSavedData>(initialSavedData);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -138,8 +140,9 @@ export function EditCompanyProfileForm({ initialProfile }: CompanyProfileFormPro
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

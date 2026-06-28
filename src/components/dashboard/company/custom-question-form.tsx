@@ -37,16 +37,36 @@ export function CustomQuestionForm({ mode, question, onCancel, onSuccess }: Cust
   const [isPending, startTransition] = useTransition();
 
   // Custom Question Form State
-  const [questionStatement, setQuestionStatement] = useState("");
-  const [questionType, setQuestionType] = useState(""); // empty by default ("Select a type")
-  const [categories, setCategories] = useState("");
-  const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
-  const [mcqOptions, setMcqOptions] = useState<MCQOption[]>([
-    { id: "1", text: "Option A", isCorrect: true },
-    { id: "2", text: "Option B", isCorrect: false },
-    { id: "3", text: "Option C", isCorrect: false },
-    { id: "4", text: "Option D", isCorrect: false },
-  ]);
+  const [questionStatement, setQuestionStatement] = useState(() => mode === "edit" && question ? (question.question || "") : "");
+  const [questionType, setQuestionType] = useState(() => mode === "edit" && question ? (question.type || "Mcq") : ""); // empty by default if create ("Select a type")
+  const [categories, setCategories] = useState(() => mode === "edit" && question ? (question.categories?.join(", ") || "") : "");
+  const [difficulty, setDifficulty] = useState<"Easy" | "Medium" | "Hard">(() => mode === "edit" && question ? (question.difficulty || "Medium") : "Medium");
+  const [mcqOptions, setMcqOptions] = useState<MCQOption[]>(() => {
+    if (mode === "edit" && question && question.mcqOptions && question.mcqOptions.length > 0) {
+      return question.mcqOptions;
+    }
+    return [
+      { id: "1", text: "Option A", isCorrect: true },
+      { id: "2", text: "Option B", isCorrect: false },
+      { id: "3", text: "Option C", isCorrect: false },
+      { id: "4", text: "Option D", isCorrect: false },
+    ];
+  });
+
+  // Track the previous question prop to adjust state if the question prop changes dynamically
+  const [prevQuestion, setPrevQuestion] = useState(question);
+  if (question !== prevQuestion) {
+    setPrevQuestion(question);
+    if (mode === "edit" && question) {
+      setQuestionStatement(question.question || "");
+      setQuestionType(question.type || "Mcq");
+      setCategories(question.categories?.join(", ") || "");
+      setDifficulty(question.difficulty || "Medium");
+      if (question.mcqOptions && question.mcqOptions.length > 0) {
+        setMcqOptions(question.mcqOptions);
+      }
+    }
+  }
 
   // Dropdown open states
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
@@ -72,19 +92,6 @@ export function CustomQuestionForm({ mode, question, onCancel, onSuccess }: Cust
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // Load question data for Edit mode
-  useEffect(() => {
-    if (mode === "edit" && question) {
-      setQuestionStatement(question.question || "");
-      setQuestionType(question.type || "Mcq");
-      setCategories(question.categories?.join(", ") || "");
-      setDifficulty(question.difficulty || "Medium");
-      if (question.mcqOptions && question.mcqOptions.length > 0) {
-        setMcqOptions(question.mcqOptions);
-      }
-    }
-  }, [mode, question]);
 
   // MCQ Options modifications
   const handleMarkCorrect = (id: string) => {
@@ -222,7 +229,7 @@ export function CustomQuestionForm({ mode, question, onCancel, onSuccess }: Cust
         <div className="flex-shrink-0 mb-4">
           <h3 className="text-base font-extrabold text-foreground">Create Custom Question</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            This question will be saved to your company's private question bank.
+            This question will be saved to your company&apos;s private question bank.
           </p>
         </div>
       )}

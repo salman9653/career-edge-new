@@ -16,6 +16,14 @@ export interface User {
   onboardingSkipped?: boolean;
   createdAt: Date;
   updatedAt: Date;
+  preferences?: {
+    themeMode: "dark" | "light" | "system";
+    themeColor: string;
+    themeColorHex: string;
+    themeGradientFrom: string;
+    themeGradientTo: string;
+    font: string;
+  };
 }
 
 export interface CandidateProfile {
@@ -38,8 +46,55 @@ export interface CompanyProfile {
   location?: string;
   websiteUrl?: string;
   companySize?: string;
+  companyType?: string;
+  founded?: string;
+  about?: string;
+  benefits?: string[];
+  socials?: {
+    website?: string;
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    instagram?: string;
+    naukri?: string;
+    glassdoor?: string;
+    indeed?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
+  linkedin?: string;
+  twitter?: string;
+  facebook?: string;
+  instagram?: string;
+}
+
+export interface CompanyProfileFormData {
+  companyName: string;
+  industry: string;
+  location: string;
+  companySize: string;
+  companyType: string;
+  founded: string;
+  about: string;
+  benefits: string[];
+  socials: {
+    website: string;
+    linkedin: string;
+    twitter: string;
+    facebook: string;
+    instagram: string;
+    naukri: string;
+    glassdoor: string;
+    indeed: string;
+  };
+  contact: {
+    email: string;
+    phone: string;
+  };
 }
 
 export interface Notification {

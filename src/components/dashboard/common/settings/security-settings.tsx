@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { ChangePassword } from "./change-password";
 import { TwoFactorAuth } from "./two-factor-auth";
@@ -11,10 +11,12 @@ interface SecuritySettingsProps {
 export function SecuritySettings({ activeTab, onClose }: SecuritySettingsProps) {
   const [securityView, setSecurityView] = useState<"menu" | "change-password" | "2fa">("menu");
 
-  // Reset view on tab change
-  useEffect(() => {
+  // Reset view on tab change (derived state)
+  const [prevTab, setPrevTab] = useState(activeTab);
+  if (activeTab !== prevTab) {
+    setPrevTab(activeTab);
     setSecurityView("menu");
-  }, [activeTab]);
+  }
 
   if (securityView === "change-password") {
     return <ChangePassword onBack={() => setSecurityView("menu")} onClose={onClose} />;
@@ -29,7 +31,7 @@ export function SecuritySettings({ activeTab, onClose }: SecuritySettingsProps) 
       <div>
         <h4 className="text-lg font-bold text-foreground">Security</h4>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Manage your account's security settings.
+          Manage your account&apos;s security settings.
         </p>
       </div>
 

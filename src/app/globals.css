@@ -51,6 +51,8 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: #4f46e5;
+  --fab-glow-from: rgba(255, 255, 255, 0.7);
+  --fab-glow-via: rgba(255, 255, 255, 0.3);
 }
 
 .dark {
@@ -75,6 +77,8 @@
   --border: #1f1f2e;
   --input: #1f1f2e;
   --ring: #818cf8;
+  --fab-glow-from: rgba(3, 3, 3, 0.85);
+  --fab-glow-via: rgba(3, 3, 3, 0.45);
 }
 
 body {

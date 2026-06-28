@@ -128,9 +128,7 @@ export function AIGenerationDialog({
 
   const currentActiveStep = genStatus.find(s => s.status === "active") || genStatus[genStatus.length - 1];
   const completedSteps = genStatus.filter(s => s.status === "done").length;
-  const totalSteps = genStatus.length;
-  // Progress calculations: 0 done = 10%, 1 done = 30%, 2 done = 50%, 3 done = 70%, 4 done = 90%, 5 done = 100%
-  const progressPercentage = completedSteps === 0 ? 10 : completedSteps === 1 ? 30 : completedSteps === 2 ? 50 : completedSteps === 3 ? 70 : completedSteps === 4 ? 90 : 100;
+
 
   // Smoothly increment generation progress bar by 1% intervals
   useEffect(() => {
@@ -159,23 +157,8 @@ export function AIGenerationDialog({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Reset states
-    setStep("generating");
-    setError(null);
-    setQuestions([]);
-    setApprovedIndices(new Set());
-    setReviewedIndices(new Set());
-    setCurrentIndex(0);
-    setTransitionDirection("none");
-    setAnimateFlash("none");
-    setSmoothProgress(0);
-    setGenStatus([
-      { id: 1, label: "Analyzing job title & requirements...", status: "active" },
-      { id: 2, label: "Formulating skills assessment parameters...", status: "pending" },
-      { id: 3, label: "Generating technical evaluation questions...", status: "pending" },
-      { id: 4, label: "Validating question options & answers...", status: "pending" },
-      { id: 5, label: "Running database duplicate checks...", status: "pending" },
-    ]);
+    // Reset states is handled by React component remounting via key prop in parent.
+
 
     // Timer animations for step checklist to feel high-fidelity
     const timers: NodeJS.Timeout[] = [];
@@ -249,8 +232,9 @@ export function AIGenerationDialog({
         await new Promise(resolve => setTimeout(resolve, 500));
         setStep("success-summary");
 
-      } catch (err: any) {
-        setError(err.message || "An unexpected error occurred during generation.");
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : "An unexpected error occurred during generation.";
+        setError(errMsg);
       }
     };
 
@@ -280,8 +264,9 @@ export function AIGenerationDialog({
       }
 
       onSuccess();
-    } catch (err: any) {
-      alert(err.message || "Failed to save questions.");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to save questions.";
+      alert(errMsg);
       setSavePending(false);
     }
   };
@@ -398,8 +383,9 @@ export function AIGenerationDialog({
       }
 
       onSuccess();
-    } catch (err: any) {
-      alert(err.message || "Failed to save questions.");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to save questions.";
+      alert(errMsg);
       setSavePending(false);
     }
   };

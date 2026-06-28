@@ -10,4 +10,5 @@ export { Toaster } from "./toaster";
 export { Select } from "./select";
 export { Sheet } from "./sheet";
 export { DatePicker } from "./date-picker";
-
+export { Tooltip } from "./tooltip";
+export type { TooltipProps } from "./tooltip";

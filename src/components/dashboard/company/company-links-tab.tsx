@@ -5,8 +5,10 @@ import { Globe, Briefcase, Building, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { LinkedinIcon, TwitterIcon, FacebookIcon, InstagramIcon } from "@/components/common";
 
+import { CompanyProfileFormData } from "@/types";
+
 interface CompanyLinksTabProps {
-  formData: any;
+  formData: CompanyProfileFormData;
   handleNestedChange: (category: "socials" | "contact", field: string, value: string) => void;
 }
 

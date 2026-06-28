@@ -10,7 +10,7 @@ export function Toaster() {
   const { toasts, removeToast } = useToastStore();
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div className="fixed bottom-20 md:bottom-4 right-4 left-4 md:left-auto md:max-w-sm w-auto md:w-full z-50 flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />

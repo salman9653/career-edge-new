@@ -3,6 +3,7 @@
 import React from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Tooltip } from "@/components/ui"
 
 interface NavItem {
   id: string;
@@ -24,21 +25,21 @@ export function SidebarNav({
   onNavClick
 }: SidebarNavProps) {
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1.5">
+    <nav className={cn("flex-1 px-3 py-4 space-y-1.5", isCollapsed ? "overflow-y-visible" : "overflow-y-auto")}>
       {navItems.length > 0 ? (
         navItems.map((item) => {
           const Icon = item.icon
           const isActive = activeModule === item.id
 
-          return (
+          const buttonEl = (
             <button
-              key={item.id}
               onClick={() => onNavClick(item.id)}
               className={cn(
                 "w-full flex items-center gap-3.5 pr-3.5 py-2.5 rounded-xl text-sm transition-colors duration-200 cursor-pointer group text-left relative pl-4",
                 isActive
                   ? "text-primary font-bold"
-                  : "text-muted-foreground hover:bg-neutral-100/60 dark:hover:bg-neutral-900/40 hover:text-foreground"
+                  : "text-muted-foreground hover:bg-neutral-100/60 dark:hover:bg-neutral-900/40 hover:text-foreground",
+                isCollapsed && "justify-center pr-0 pl-0"
               )}
             >
               {isActive && (
@@ -62,6 +63,20 @@ export function SidebarNav({
               )} />
               {!isCollapsed && <span className="truncate relative z-10">{item.label}</span>}
             </button>
+          )
+
+          if (isCollapsed) {
+            return (
+              <Tooltip key={item.id} content={item.label} side="right" className="w-full justify-center">
+                {buttonEl}
+              </Tooltip>
+            )
+          }
+
+          return (
+            <React.Fragment key={item.id}>
+              {buttonEl}
+            </React.Fragment>
           )
         })
       ) : (

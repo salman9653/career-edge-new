@@ -4,11 +4,11 @@ import React, { useEffect, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/dashboard/common";
 import { useUIStore } from "@/store/useUIStore";
-import { Square, CheckSquare, X, Plus, Sparkles, HelpCircle } from "lucide-react";
+import { Square, CheckSquare, Plus, Sparkles, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { User } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button, Tooltip } from "@/components/ui";
 
 interface QuestionRow {
   id: string;
@@ -32,10 +32,10 @@ interface QuestionBankClientProps {
   children: React.ReactNode;
 }
 
-export function QuestionBankClient({ questions, user, children }: QuestionBankClientProps) {
+export function QuestionBankClient({ questions, children }: QuestionBankClientProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [fabMenuOpen, setFabMenuOpen] = React.useState(false);
 
   const isAddRoute = pathname === "/dashboard/questions/add" || pathname === "/dashboard/questions/generate";
@@ -131,20 +131,25 @@ export function QuestionBankClient({ questions, user, children }: QuestionBankCl
     {
       key: "categories",
       label: "Category",
-      render: (row) => {
+      render: (row, rIndex) => {
         const cats = row.categories || [];
         if (cats.length === 0) return <span className="text-muted-foreground text-xs">-</span>;
         return (
-          <div className="flex items-center gap-1">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-neutral-200 dark:border-neutral-700 max-w-[90px] truncate">
-              {cats[0]}
-            </span>
-            {cats.length > 1 && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-primary/10 text-primary border border-primary/10">
-                +{cats.length - 1}
+          <Tooltip
+            content={cats.join(", ")}
+            side={rIndex === 0 ? "bottom" : "top"}
+          >
+            <div className="flex items-center gap-1 cursor-help">
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-foreground border border-neutral-200 dark:border-neutral-700 max-w-[90px] truncate">
+                {cats[0]}
               </span>
-            )}
-          </div>
+              {cats.length > 1 && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-primary/10 text-primary border border-primary/10">
+                  +{cats.length - 1}
+                </span>
+              )}
+            </div>
+          </Tooltip>
         );
       },
     },
@@ -289,14 +294,14 @@ export function QuestionBankClient({ questions, user, children }: QuestionBankCl
   // If we are on full page forms (add/generate), render them directly
   if (isAddRoute) {
     return (
-      <div className="w-full h-[calc(100vh-168px)] md:h-[calc(100vh-112px)] flex flex-col overflow-hidden -mb-[40px] md:-mb-[48px] relative">
+      <div className="w-full h-[calc(100vh-88px)] md:h-[calc(100vh-48px)] flex flex-col overflow-hidden -mb-[24px] md:-mb-[32px] relative">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[calc(100vh-168px)] md:h-[calc(100vh-112px)] flex flex-col overflow-hidden -mb-[40px] md:-mb-[48px] relative">
+    <div className="w-full h-[calc(100vh-88px)] md:h-[calc(100vh-48px)] flex flex-col overflow-hidden -mb-[24px] md:-mb-[32px] relative">
       {questions.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto h-full">
           <motion.div
@@ -390,54 +395,73 @@ export function QuestionBankClient({ questions, user, children }: QuestionBankCl
           </AnimatePresence>
 
           {/* Mobile FAB and Speed Dial Options */}
-          <div className="sm:hidden fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3.5">
+          <div className="sm:hidden fixed bottom-20 right-6 z-40 flex flex-col items-end gap-3.5">
             <AnimatePresence>
               {fabMenuOpen && (
-                <div className="flex flex-col items-end gap-3.5 mb-1">
-                  {/* Option 1: AI Generator */}
+                <>
+                  {/* Cloudy separation glow — soft radial blobs behind the speed dial */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 20, scale: 0.8 }}
-                    transition={{ type: "spring", damping: 15 }}
-                    className="flex items-center gap-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="pointer-events-none fixed bottom-16 right-0 z-[-1]"
+                    aria-hidden="true"
                   >
-                    <span className="bg-background text-foreground text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl border border-neutral-200/50 dark:border-neutral-800">
-                      Generate with AI
-                    </span>
-                    <button
-                      onClick={() => {
-                        setFabMenuOpen(false);
-                        router.push("/dashboard/questions/generate");
+                    <div
+                      className="w-72 h-64 blur-2xl rounded-full translate-x-8 translate-y-4"
+                      style={{
+                        background: 'radial-gradient(circle, var(--fab-glow-from) 0%, var(--fab-glow-via) 40%, transparent 70%)',
                       }}
-                      className="w-12 h-12 rounded-full bg-ai-gradient text-white flex items-center justify-center shadow-lg cursor-pointer border-0 active:scale-95 transition-transform"
-                    >
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </button>
+                    />
                   </motion.div>
 
-                  {/* Option 2: Custom Question */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 15, scale: 0.8 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 15, scale: 0.8 }}
-                    transition={{ type: "spring", damping: 15, delay: 0.05 }}
-                    className="flex items-center gap-3"
-                  >
-                    <span className="bg-background text-foreground text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl border border-neutral-200/50 dark:border-neutral-800">
-                      Create Custom Question
-                    </span>
-                    <button
-                      onClick={() => {
-                        setFabMenuOpen(false);
-                        router.push("/dashboard/questions/add");
-                      }}
-                      className="w-12 h-12 rounded-full bg-neutral-200 dark:bg-neutral-800 text-foreground flex items-center justify-center shadow-lg cursor-pointer border-0 active:scale-95 transition-transform"
+                  <div className="flex flex-col items-end gap-3.5 mb-1">
+                    {/* Option 1: AI Generator */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 20, scale: 0.8 }}
+                      transition={{ type: "spring", damping: 15 }}
+                      className="flex items-center gap-3"
                     >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </motion.div>
-                </div>
+                      <span className="bg-background text-foreground text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl border border-neutral-200/50 dark:border-neutral-800">
+                        Generate with AI
+                      </span>
+                      <button
+                        onClick={() => {
+                          setFabMenuOpen(false);
+                          router.push("/dashboard/questions/generate");
+                        }}
+                        className="w-12 h-12 rounded-full bg-ai-gradient text-white flex items-center justify-center shadow-lg cursor-pointer border-0 active:scale-95 transition-transform"
+                      >
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </button>
+                    </motion.div>
+
+                    {/* Option 2: Custom Question */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 15, scale: 0.8 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 15, scale: 0.8 }}
+                      transition={{ type: "spring", damping: 15, delay: 0.05 }}
+                      className="flex items-center gap-3"
+                    >
+                      <span className="bg-background text-foreground text-xs font-bold px-3 py-1.5 rounded-lg shadow-xl border border-neutral-200/50 dark:border-neutral-800">
+                        Create Custom Question
+                      </span>
+                      <button
+                        onClick={() => {
+                          setFabMenuOpen(false);
+                          router.push("/dashboard/questions/add");
+                        }}
+                        className="w-12 h-12 rounded-full bg-neutral-200 dark:bg-neutral-800 text-foreground flex items-center justify-center shadow-lg cursor-pointer border-0 active:scale-95 transition-transform"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </motion.div>
+                  </div>
+                </>
               )}
             </AnimatePresence>
 

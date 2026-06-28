@@ -4,8 +4,10 @@ import React from "react";
 import { Building, Briefcase, MapPin, Users, Calendar, FileText, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+import { CompanyProfileFormData } from "@/types";
+
 interface CompanyDetailsTabProps {
-  formData: any;
+  formData: CompanyProfileFormData;
   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
 }
 

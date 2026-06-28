@@ -4,8 +4,10 @@ import React from "react";
 import { Mail, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+import { CompanyProfileFormData } from "@/types";
+
 interface CompanyContactTabProps {
-  formData: any;
+  formData: CompanyProfileFormData;
   handleNestedChange: (category: "socials" | "contact", field: string, value: string) => void;
 }
 

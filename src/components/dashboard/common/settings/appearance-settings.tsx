@@ -54,6 +54,7 @@ export function AppearanceSettings() {
 
   // Ensure next-themes is mounted to prevent hydration mismatches
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedColor = localStorage.getItem("career-edge-theme-color") || "Indigo";
     const savedFont = localStorage.getItem("career-edge-theme-font") || "Plus Jakarta Sans";
@@ -75,6 +76,22 @@ export function AppearanceSettings() {
     localStorage.setItem("career-edge-theme-color-hex", hex);
     localStorage.setItem("career-edge-theme-color-from-hex", fromHex);
     localStorage.setItem("career-edge-theme-color-to-hex", toHex);
+
+    // Sync to MongoDB
+    fetch("/api/preferences", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        themeColor: colorName,
+        themeColorHex: hex,
+        themeGradientFrom: fromHex,
+        themeGradientTo: toHex,
+      }),
+    }).catch((err) => {
+      console.error("Failed to sync theme color to MongoDB:", err);
+    });
   };
 
   const handleFontSelect = (fontName: string) => {
@@ -93,6 +110,35 @@ export function AppearanceSettings() {
     }
     document.documentElement.style.setProperty("--font-sans", fontConfig.family);
     localStorage.setItem("career-edge-theme-font", fontName);
+
+    // Sync to MongoDB
+    fetch("/api/preferences", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        font: fontName,
+      }),
+    }).catch((err) => {
+      console.error("Failed to sync theme font to MongoDB:", err);
+    });
+  };
+
+  const handleThemeSelect = (modeId: string) => {
+    setTheme(modeId);
+    // Sync to MongoDB
+    fetch("/api/preferences", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        themeMode: modeId,
+      }),
+    }).catch((err) => {
+      console.error("Failed to sync theme mode to MongoDB:", err);
+    });
   };
 
   if (!mounted) return null;
@@ -136,7 +182,7 @@ export function AppearanceSettings() {
             return (
               <button
                 key={mode.id}
-                onClick={() => setTheme(mode.id)}
+                onClick={() => handleThemeSelect(mode.id)}
                 className={cn(
                   "flex flex-col items-center justify-center p-5 rounded-2xl border text-center transition-all cursor-pointer min-h-[100px] gap-2.5",
                   isSelected

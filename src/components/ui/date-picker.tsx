@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DatePickerProps {
@@ -44,8 +44,10 @@ export function DatePicker({
     isValidDate ? initialDate.getFullYear() : new Date().getFullYear()
   );
 
-  // Sync state if value prop changes
-  useEffect(() => {
+  // Adjust state during render if value prop changes
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (value) {
       const d = new Date(value);
       if (!isNaN(d.getTime())) {
@@ -53,7 +55,7 @@ export function DatePicker({
         setCurrentYear(d.getFullYear());
       }
     }
-  }, [value]);
+  }
 
   // Click outside to close
   useEffect(() => {

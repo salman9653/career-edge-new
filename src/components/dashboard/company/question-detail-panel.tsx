@@ -2,9 +2,9 @@
 
 import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Edit3, Trash2, Calendar, Tag, Shield, Clock, HelpCircle, ArrowLeft, X, Check } from "lucide-react";
+import { Edit3, Trash2, Calendar, Tag, Shield, Clock, HelpCircle, X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button, ConfirmDialog } from "@/components/ui";
+import { ConfirmDialog } from "@/components/ui";
 
 interface QuestionDetail {
   id: string;
@@ -28,7 +28,7 @@ interface QuestionDetailPanelProps {
 
 export function QuestionDetailPanel({ question }: QuestionDetailPanelProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);

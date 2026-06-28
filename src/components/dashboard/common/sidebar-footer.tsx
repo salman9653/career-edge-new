@@ -12,6 +12,7 @@ import { ProfileCard } from "./profile-card"
 import { ProfileMenu } from "./profile-menu"
 
 import { User } from "@/types"
+import { Tooltip } from "@/components/ui"
 
 interface SidebarFooterProps {
   user: User
@@ -91,7 +92,7 @@ export function SidebarFooter({
       <div className={cn("flex items-center gap-2", isCollapsed ? "flex-col" : "justify-between")}>
 
         {/* Theme Toggle Tooltip */}
-        <div className="relative group flex-1 flex justify-center">
+        <Tooltip content={getThemeLabel()} side={isCollapsed ? "right" : "top"} className="flex-1 justify-center">
           <button
             onClick={handleThemeToggle}
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
@@ -99,28 +100,28 @@ export function SidebarFooter({
           >
             {getThemeIcon()}
           </button>
-          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0b0c16]/95 backdrop-blur-md border border-neutral-200/10 dark:border-neutral-800/30 text-white text-[10px] font-bold shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all pointer-events-none z-50">
-            {getThemeLabel()}
-          </div>
-        </div>
+        </Tooltip>
 
         {/* Notification Tooltip & Popover */}
-        <div className="relative group flex-1 flex justify-center" ref={notificationsRef}>
-          <button
-            onClick={() => {
-              setActivePopover((prev) => (prev === "notifications" ? "none" : "notifications"))
-            }}
-            className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
-            aria-label="Notifications"
-          >
-            <Bell className="w-4.5 h-4.5 transition-transform hover:scale-110" />
-          </button>
-
-          {/* Tooltip (only show if popover is closed to avoid overlays) */}
-          {activePopover !== "notifications" && (
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0b0c16]/95 backdrop-blur-md border border-neutral-200/10 dark:border-neutral-800/30 text-white text-[10px] font-bold shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all pointer-events-none z-50">
-              Notification
-            </div>
+        <div className="relative flex-1 flex justify-center" ref={notificationsRef}>
+          {activePopover === "notifications" ? (
+            <button
+              onClick={() => setActivePopover("none")}
+              className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
+              aria-label="Notifications"
+            >
+              <Bell className="w-4.5 h-4.5 transition-transform hover:scale-110" />
+            </button>
+          ) : (
+            <Tooltip content="Notifications" side={isCollapsed ? "right" : "top"} className="w-full justify-center">
+              <button
+                onClick={() => setActivePopover("notifications")}
+                className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
+                aria-label="Notifications"
+              >
+                <Bell className="w-4.5 h-4.5 transition-transform hover:scale-110" />
+              </button>
+            </Tooltip>
           )}
 
           {/* Floating Notifications Popover with Blurred Effect */}
@@ -130,35 +131,49 @@ export function SidebarFooter({
         </div>
 
         {/* Chat Tooltip */}
-        <div className="relative group flex-1 flex justify-center">
-          <button
-            onClick={() => {
-              setActivePopover((prev) => (prev === "chat" ? "none" : "chat"))
-            }}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
-            aria-label="Chat"
-          >
-            <MessageSquare className="w-4.5 h-4.5 transition-transform hover:scale-110" />
-          </button>
-          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0b0c16]/95 backdrop-blur-md border border-neutral-200/10 dark:border-neutral-800/30 text-white text-[10px] font-bold shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all pointer-events-none z-50">
-            Chat
-          </div>
+        <div className="relative flex-1 flex justify-center">
+          {activePopover === "chat" ? (
+            <button
+              onClick={() => setActivePopover("none")}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
+              aria-label="Chat"
+            >
+              <MessageSquare className="w-4.5 h-4.5 transition-transform hover:scale-110" />
+            </button>
+          ) : (
+            <Tooltip content="Chat" side={isCollapsed ? "right" : "top"} className="w-full justify-center">
+              <button
+                onClick={() => setActivePopover("chat")}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-neutral-100/50 dark:bg-neutral-900/50 border border-neutral-200/40 dark:border-neutral-800/40 text-muted-foreground hover:text-foreground transition-all cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50"
+                aria-label="Chat"
+              >
+                <MessageSquare className="w-4.5 h-4.5 transition-transform hover:scale-110" />
+              </button>
+            </Tooltip>
+          )}
         </div>
 
         {/* Career AI Tooltip */}
-        <div className="relative group flex-1 flex justify-center">
-          <button
-            onClick={() => {
-              setActivePopover((prev) => (prev === "ai" ? "none" : "ai"))
-            }}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/25 dark:border-primary/15 hover:bg-primary/20 transition-all cursor-pointer"
-            aria-label="Career AI"
-          >
-            <Sparkles className="w-4.5 h-4.5 text-primary animate-pulse" />
-          </button>
-          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-[#0b0c16]/95 backdrop-blur-md border border-primary/30 text-white text-[10px] font-bold shadow-md whitespace-nowrap opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all pointer-events-none z-50">
-            Career AI
-          </div>
+        <div className="relative flex-1 flex justify-center">
+          {activePopover === "ai" ? (
+            <button
+              onClick={() => setActivePopover("none")}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary/15 text-primary border border-primary/25 dark:border-primary/15 hover:bg-primary/20 transition-all cursor-pointer"
+              aria-label="Career AI"
+            >
+              <Sparkles className="w-4.5 h-4.5 text-primary animate-pulse" />
+            </button>
+          ) : (
+            <Tooltip content="Career AI" side={isCollapsed ? "right" : "top"} className="w-full justify-center">
+              <button
+                onClick={() => setActivePopover("ai")}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/25 dark:border-primary/15 hover:bg-primary/20 transition-all cursor-pointer"
+                aria-label="Career AI"
+              >
+                <Sparkles className="w-4.5 h-4.5 text-primary animate-pulse" />
+              </button>
+            </Tooltip>
+          )}
         </div>
 
       </div>
@@ -176,13 +191,34 @@ export function SidebarFooter({
         )}
 
         {/* Profile trigger box */}
-        <ProfileCard
-          user={user}
-          isCollapsed={isCollapsed}
-          onClick={() => {
-            setActivePopover((prev) => (prev === "profile" ? "none" : "profile"))
-          }}
-        />
+        {isCollapsed && activePopover !== "profile" ? (
+          <Tooltip
+            content={
+              <div className="flex flex-col text-left">
+                <span className="font-bold">{user.name}</span>
+                <span className="text-[10px] opacity-80 mt-0.5">{user.email}</span>
+              </div>
+            }
+            side="right"
+            className="w-full"
+          >
+            <ProfileCard
+              user={user}
+              isCollapsed={isCollapsed}
+              onClick={() => {
+                setActivePopover((prev) => (prev === "profile" ? "none" : "profile"))
+              }}
+            />
+          </Tooltip>
+        ) : (
+          <ProfileCard
+            user={user}
+            isCollapsed={isCollapsed}
+            onClick={() => {
+              setActivePopover((prev) => (prev === "profile" ? "none" : "profile"))
+            }}
+          />
+        )}
       </div>
 
     </div>

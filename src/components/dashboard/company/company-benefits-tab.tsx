@@ -6,8 +6,10 @@ import {
   Coffee, Baby, Coins, Shield, Users, Car, GraduationCap, Smile
 } from "lucide-react";
 
+import { CompanyProfileFormData } from "@/types";
+
 interface CompanyBenefitsTabProps {
-  formData: any;
+  formData: CompanyProfileFormData;
   toggleBenefit: (benefit: string) => void;
 }
 

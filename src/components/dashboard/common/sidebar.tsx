@@ -1,10 +1,13 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
+import { useUIStore } from "@/store/useUIStore"
+import { useClickOutside } from "@/hooks/useClickOutside"
 import {
   Briefcase,
   Menu,
@@ -19,7 +22,10 @@ import {
   FileSpreadsheet,
   FileText,
   Search,
-  Award
+  Award,
+  ArrowLeft,
+  MessageSquare,
+  Bell
 } from "lucide-react"
 import { CommandBar } from "./command-bar"
 import { SidebarNav } from "./sidebar-nav"
@@ -38,17 +44,28 @@ interface SidebarProps {
   activeModule: string
   onNavClick: (moduleId: string) => void
   onOnboardingOpen?: () => void
+  onSearchClick?: () => void
 }
 
 export function Sidebar({
   user,
   activeModule,
   onNavClick,
-  onOnboardingOpen
+  onOnboardingOpen,
+  onSearchClick
 }: SidebarProps) {
+  const router = useRouter()
+  const { headerTitle, headerBackHref } = useUIStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
+  const avatarMenuRef = useRef<HTMLDivElement>(null)
+  useClickOutside(avatarMenuRef, () => {
+    if (avatarMenuOpen) {
+      setAvatarMenuOpen(false)
+    }
+  })
 
   // Get navigation links based on user role
   const getNavItems = (): NavItem[] => {
@@ -82,22 +99,54 @@ export function Sidebar({
 
   const navItems = getNavItems()
 
-  // Filter navigation items if search is used
-  const filteredNavItems = navItems.filter((item) =>
-    item.label.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Navigation items are static locally since typing opens global search modal
+  const filteredNavItems = navItems
 
   const handleNavClick = (moduleId: string) => {
     onNavClick(moduleId)
     setIsMobileOpen(false) // Close drawer on mobile
   }
 
+  // Resolve Header Title on top area
+  const getHeaderTitle = () => {
+    if (activeModule === "dashboard") return "Dashboard"
+    
+    // Explicit title mappings matching sidebar navigation requested
+    const titleMap: Record<string, string> = {
+      ats: "Application Tracking System",
+      crm: "Candidate Relation managment",
+      templates: "Templates",
+      questions: "Question Bank",
+      companies: "Manage Companies",
+      candidates: "Manage Candidates",
+      app: "Manage App",
+      applications: "My Applications",
+      practice: "Practice",
+      notifications: "Notifications",
+    }
+
+    if (activeModule === "jobs") {
+      return user?.accountType === "company" ? "Posted Jobs" : "Jobs Search"
+    }
+
+    return titleMap[activeModule] || activeModule.replace("-", " ")
+  }
+
+  const resolvedTitle = headerTitle || getHeaderTitle()
+
+  const capitalizedTitle = resolvedTitle
+    ? resolvedTitle
+        .split(/[\s-_]+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
+    : ""
+
   return (
     <>
       {/* Mobile Top Header (hidden on desktop) */}
       <div className="md:hidden flex items-center justify-between w-full h-16 px-4 bg-background/80 backdrop-blur-md border-b border-neutral-200/50 dark:border-neutral-800/50 absolute top-0 left-0 z-30">
-        <div className="flex items-center space-x-2.5">
-          <div className="relative w-8 h-8 flex items-center justify-center">
+        <div className="flex items-center space-x-2 flex-grow overflow-hidden">
+          <Link href="/" className="relative w-8 h-8 flex items-center justify-center flex-shrink-0">
             <Image
               src="/logo_light.png"
               alt="CareerEdge Logo"
@@ -112,36 +161,61 @@ export function Sidebar({
               height={32}
               className="w-full h-full object-contain hidden dark:block"
             />
-          </div>
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            Career<span className="text-primary">Edge</span>
-          </span>
+          </Link>
+          {activeModule !== "more" && (
+            <span className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 flex-shrink-0" />
+          )}
+          {headerBackHref && activeModule !== "more" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push(headerBackHref)}
+              className="w-8 h-8 rounded-lg border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4 text-foreground" />
+            </Button>
+          )}
+          {activeModule === "more" ? (
+            <span className="text-sm font-bold tracking-tight text-foreground">
+              Career<span className="text-primary">Edge</span>
+            </span>
+          ) : (
+            <h1 className="text-sm font-extrabold tracking-tight text-foreground truncate text-left">
+              {capitalizedTitle}
+            </h1>
+          )}
         </div>
         
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsMobileOpen(true)}
-          className="rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50"
-        >
-          <Menu className="w-5 h-5 text-foreground" />
-        </Button>
+        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+          {/* Chat Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/dashboard/chat")}
+            className="w-9 h-9 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 cursor-pointer"
+            aria-label="Chat"
+          >
+            <MessageSquare className="w-4.5 h-4.5 text-foreground" />
+          </Button>
+
+          {/* Notifications Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/dashboard/notifications")}
+            className="w-9 h-9 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 cursor-pointer"
+            aria-label="Notifications"
+          >
+            <Bell className="w-4.5 h-4.5 text-foreground" />
+          </Button>
+        </div>
       </div>
 
-      {/* Backdrop for Mobile Sidebar Drawer */}
-      {isMobileOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar Container */}
+      {/* Sidebar Container (desktop only) */}
       <aside
         className={cn(
-          "fixed md:static inset-y-0 left-0 z-50 flex flex-col h-full glass border-r shadow-lg transition-all duration-300 bg-neutral-50/50 dark:bg-neutral-950/20",
-          isCollapsed ? "w-20" : "w-64",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "hidden md:flex flex-col h-full glass border-r shadow-lg transition-all duration-300 bg-neutral-50/50 dark:bg-neutral-950/20 static flex-shrink-0",
+          isCollapsed ? "w-20" : "w-64"
         )}
       >
         {/* Sidebar Header / Logo */}
@@ -170,16 +244,6 @@ export function Sidebar({
             )}
           </Link>
 
-          {/* Close button for Mobile drawer only */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileOpen(false)}
-            className="md:hidden rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-900"
-          >
-            <X className="w-5 h-5" />
-          </Button>
-
           {/* Collapse toggle button for Desktop only */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -191,12 +255,12 @@ export function Sidebar({
         </div>
 
         {/* Command Search Section */}
-        <CommandBar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          isCollapsed={isCollapsed}
-          onExpandSidebar={() => setIsCollapsed(false)}
-        />
+        <div className="hidden md:block">
+          <CommandBar
+            isCollapsed={isCollapsed}
+            onSearchClick={onSearchClick}
+          />
+        </div>
 
         {/* Navigation Links */}
         <SidebarNav
@@ -207,11 +271,13 @@ export function Sidebar({
         />
 
         {/* Sidebar Footer Section */}
-        <SidebarFooter
-          user={user}
-          isCollapsed={isCollapsed}
-          onOnboardingOpen={onOnboardingOpen}
-        />
+        <div className="hidden md:block">
+          <SidebarFooter
+            user={user}
+            isCollapsed={isCollapsed}
+            onOnboardingOpen={onOnboardingOpen}
+          />
+        </div>
       </aside>
     </>
   )

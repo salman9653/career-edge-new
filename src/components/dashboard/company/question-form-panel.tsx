@@ -14,10 +14,10 @@ interface QuestionFormPanelProps {
   mode: "create";
 }
 
-export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
+export function QuestionFormPanel(_props: QuestionFormPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const isGenerateRoute = pathname === "/dashboard/questions/generate";
 
@@ -43,7 +43,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
   const [aiCount, setAiCount] = useState(5);
   const [aiDifficulty, setAiDifficulty] = useState<"Easy" | "Medium" | "Hard">("Medium");
   const [showAiDifficultyDropdown, setShowAiDifficultyDropdown] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const isGeneratingAI = false;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Dropdown click outside refs
@@ -158,7 +158,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
               <Sparkles className="w-4 h-4 animate-pulse" stroke="url(#ai-grad)" /> Generate Questions with AI
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Describe what you're looking for, and let AI do the work.
+              Describe what you&apos;re looking for, and let AI do the work.
             </p>
           </div>
 
@@ -343,6 +343,7 @@ export function QuestionFormPanel({ mode }: QuestionFormPanelProps) {
       </div>
 
       <AIGenerationDialog
+        key={isDialogOpen ? "open" : "closed"}
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
         onSuccess={() => {

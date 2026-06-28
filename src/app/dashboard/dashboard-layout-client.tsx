@@ -6,6 +6,7 @@ import { DashboardLayout } from "@/components/dashboard/common/dashboard-layout"
 import { AccountTypeSelection } from "@/components/auth/account-type-selection";
 import { SettingsModal } from "@/components/dashboard/common";
 import { User, CandidateProfile, CompanyProfile } from "@/types";
+import { DashboardThemeApplier } from "@/components/dashboard/common/dashboard-theme-applier";
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode;
@@ -46,6 +47,7 @@ export function DashboardLayoutClient({ children, user, profile }: DashboardLayo
   if (user.accountType === "unselected" || !user.accountType) {
     return (
       <div className="min-h-screen p-4 sm:p-6 md:p-8 grid-bg bg-background flex flex-col items-center justify-center relative w-full animate-in fade-in duration-300">
+        <DashboardThemeApplier />
         <AccountTypeSelection user={user} />
       </div>
     );
@@ -53,6 +55,7 @@ export function DashboardLayoutClient({ children, user, profile }: DashboardLayo
 
   return (
     <>
+      <DashboardThemeApplier />
       <DashboardLayout
         user={user}
         profile={profile}
