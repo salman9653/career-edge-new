@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/store/useUIStore";
 import { User as UserType } from "@/types";
 import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
+import { useThemeSync } from "@/hooks/useThemeSync";
 
 interface MoreClientProps {
   user: UserType;
@@ -16,7 +16,7 @@ interface MoreClientProps {
 
 export function MoreClient({ user }: MoreClientProps) {
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useThemeSync();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -25,10 +25,10 @@ export function MoreClient({ user }: MoreClientProps) {
 
   const currentTheme = mounted ? theme : "system";
 
-  // Redirect if screen is larger than mobile (768px matches md breakpoint)
+  // Redirect if screen is larger than mobile (640px matches sm breakpoint)
   React.useEffect(() => {
     const checkViewport = () => {
-      if (window.innerWidth >= 768) {
+      if (window.innerWidth >= 640) {
         router.replace("/dashboard");
       }
     };
@@ -193,36 +193,36 @@ export function MoreClient({ user }: MoreClientProps) {
               </div>
             </div>
           </div>
-          <div className="flex items-center bg-neutral-100 dark:bg-neutral-900 rounded-xl p-1 border border-neutral-200/30 dark:border-neutral-800/30">
+          <div className="flex items-center bg-neutral-100 dark:bg-neutral-900 rounded-xl p-1.5 border border-neutral-200/30 dark:border-neutral-800/30 gap-0.5">
             <button
               onClick={() => setTheme("light")}
               className={cn(
-                "p-1.5 rounded-lg transition-all cursor-pointer",
+                "p-2.5 rounded-lg transition-all cursor-pointer",
                 currentTheme === "light" ? "bg-white dark:bg-neutral-800 text-amber-500 shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
               aria-label="Light Mode"
             >
-              <Sun className="w-4 h-4" />
+              <Sun className="w-5 h-5" />
             </button>
             <button
               onClick={() => setTheme("dark")}
               className={cn(
-                "p-1.5 rounded-lg transition-all cursor-pointer",
+                "p-2.5 rounded-lg transition-all cursor-pointer",
                 currentTheme === "dark" ? "bg-white dark:bg-neutral-800 text-indigo-400 shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
               aria-label="Dark Mode"
             >
-              <Moon className="w-4 h-4" />
+              <Moon className="w-5 h-5" />
             </button>
             <button
               onClick={() => setTheme("system")}
               className={cn(
-                "p-1.5 rounded-lg transition-all cursor-pointer",
+                "p-2.5 rounded-lg transition-all cursor-pointer",
                 currentTheme === "system" ? "bg-white dark:bg-neutral-800 text-neutral-500 shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
               aria-label="System Mode"
             >
-              <Monitor className="w-4 h-4" />
+              <Monitor className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -246,7 +246,7 @@ export function MoreClient({ user }: MoreClientProps) {
 
         {/* Settings Link */}
         <button
-          onClick={() => router.push("/dashboard/more?settings=true&tab=Account")}
+          onClick={() => router.push("/dashboard/settings")}
           className="w-full flex items-center justify-between p-4 rounded-2xl border border-neutral-200/30 dark:border-neutral-800/30 bg-card hover:bg-neutral-50 dark:hover:bg-neutral-900/50 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-md transition-all duration-300 text-left cursor-pointer group"
         >
           <div className="flex items-center gap-3">
@@ -254,7 +254,7 @@ export function MoreClient({ user }: MoreClientProps) {
               <Settings className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-bold text-foreground">Account Settings</div>
+              <div className="text-sm font-bold text-foreground">Settings</div>
               <div className="text-[10px] text-muted-foreground">Preferences, password, and integration settings</div>
             </div>
           </div>

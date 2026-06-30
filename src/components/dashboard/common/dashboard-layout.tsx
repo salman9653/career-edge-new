@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -71,7 +71,10 @@ export function DashboardLayout({
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const isSpecialPath = pathname === "/dashboard/chat" || pathname === "/dashboard/notifications" || pathname === "/dashboard/more";
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const isSpecialPath = pathname === "/dashboard/chat" || pathname === "/dashboard/notifications" || pathname === "/dashboard/more" || pathname === "/dashboard/settings";
+
   const isActiveDashboard = pathname.startsWith("/dashboard") && !isSpecialPath;
 
   // Add global keyboard shortcut for search
@@ -85,6 +88,11 @@ export function DashboardLayout({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Reset selection when query changes or modal opens
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [searchQuery, isSearchOpen]);
 
   const getSearchItems = () => {
     const items = [
@@ -133,11 +141,11 @@ export function DashboardLayout({
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Content Body Container */}
-        <div className="flex-1 overflow-y-auto grid-bg pt-[88px] pb-20 md:pb-8 px-6 md:p-8 relative">
+        <div className="flex-1 overflow-y-auto grid-bg pt-[88px] pb-20 sm:pb-8 px-6 sm:p-8 relative">
           <div className="w-full pb-8">
             {/* Local Page Header Row (rendered only if the page doesn't show a toolbar view switcher) */}
             {!isTableListingPage && capitalizedTitle && (
-              <div className="hidden md:flex items-center gap-3.5 mb-6">
+              <div className="hidden sm:flex items-center gap-3.5 mb-6">
                 {headerBackHref && (
                   <Button
                     variant="ghost"
@@ -148,7 +156,7 @@ export function DashboardLayout({
                     <ArrowLeft className="w-4.5 h-4.5" />
                   </Button>
                 )}
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground">
                   {capitalizedTitle}
                 </h1>
               </div>
@@ -159,7 +167,7 @@ export function DashboardLayout({
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-md border-t border-neutral-200/50 dark:border-neutral-800/50 flex items-center justify-around px-2 z-30 select-none">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-md border-t border-neutral-200/50 dark:border-neutral-800/50 flex items-center justify-around px-2 z-30 select-none">
         {/* Dashboard Link (All Roles) */}
         <Link
           href="/dashboard"
@@ -304,6 +312,36 @@ export function DashboardLayout({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => {
+                      const next = prev < filteredItems.length - 1 ? prev + 1 : 0;
+                      // scroll into view
+                      const el = listRef.current?.children[next] as HTMLElement;
+                      el?.scrollIntoView({ block: "nearest" });
+                      return next;
+                    });
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => {
+                      const next = prev > 0 ? prev - 1 : filteredItems.length - 1;
+                      const el = listRef.current?.children[next] as HTMLElement;
+                      el?.scrollIntoView({ block: "nearest" });
+                      return next;
+                    });
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && filteredItems[selectedIndex]) {
+                      setIsSearchOpen(false);
+                      setSearchQuery("");
+                      router.push(filteredItems[selectedIndex].path);
+                    }
+                  } else if (e.key === "Escape") {
+                    setIsSearchOpen(false);
+                    setSearchQuery("");
+                  }
+                }}
                 placeholder="Search tools and pages..."
                 className="w-full h-10 pl-10 pr-4 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-50/50 dark:bg-neutral-900/40 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 text-foreground"
                 autoFocus
@@ -315,10 +353,11 @@ export function DashboardLayout({
               <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider block pl-1">
                 {searchQuery ? "Search Results" : "Suggestions"}
               </span>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1" ref={listRef}>
                 {filteredItems.length > 0 ? (
-                  filteredItems.map((item) => {
+                  filteredItems.map((item, index) => {
                     const IconComp = item.icon;
+                    const isActive = index === selectedIndex;
                     return (
                       <button
                         key={item.title}
@@ -327,21 +366,35 @@ export function DashboardLayout({
                           setSearchQuery("");
                           router.push(item.path);
                         }}
-                        className="w-full p-2.5 text-xs font-bold text-foreground bg-card hover:bg-neutral-100 dark:hover:bg-neutral-900/50 border border-neutral-200/20 dark:border-neutral-800/30 rounded-xl cursor-pointer text-left flex items-center justify-between group transition-colors"
+                        onMouseEnter={() => setSelectedIndex(index)}
+                        className={cn(
+                          "w-full p-2.5 text-xs font-bold text-foreground border rounded-xl cursor-pointer text-left flex items-center justify-between group transition-colors",
+                          isActive
+                            ? "bg-primary/10 border-primary/30 text-primary"
+                            : "bg-card hover:bg-neutral-100 dark:hover:bg-neutral-900/50 border-neutral-200/20 dark:border-neutral-800/30"
+                        )}
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-neutral-100 dark:bg-neutral-900 flex items-center justify-center border border-neutral-200/10 dark:border-neutral-800/30 group-hover:scale-105 transition-transform text-muted-foreground">
+                          <div className={cn(
+                            "w-7 h-7 rounded-lg flex items-center justify-center border transition-transform text-muted-foreground",
+                            isActive
+                              ? "bg-primary/10 border-primary/20 scale-105 text-primary"
+                              : "bg-neutral-100 dark:bg-neutral-900 border-neutral-200/10 dark:border-neutral-800/30 group-hover:scale-105"
+                          )}>
                             <IconComp className="w-4 h-4" />
                           </div>
-                          <span>{item.title}</span>
+                          <span className={isActive ? "text-primary" : ""}>{item.title}</span>
                         </div>
-                        <span className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">Jump to ↵</span>
+                        <span className={cn(
+                          "text-[9px] transition-opacity",
+                          isActive ? "opacity-100 text-primary" : "opacity-0 group-hover:opacity-100 text-muted-foreground"
+                        )}>Jump to ↵</span>
                       </button>
                     );
                   })
                 ) : (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    No results found for "{searchQuery}"
+                    No results found for &quot;{searchQuery}&quot;
                   </div>
                 )}
               </div>

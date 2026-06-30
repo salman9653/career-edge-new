@@ -389,13 +389,13 @@ export function QuestionBankClient({ questions, children }: QuestionBankClientPr
                 animate={{ opacity: 0.4 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setFabMenuOpen(false)}
-                className="sm:hidden fixed inset-0 bg-black/60 z-30 pointer-events-auto"
+                className="md:hidden fixed inset-0 bg-black/60 z-30 pointer-events-auto"
               />
             )}
           </AnimatePresence>
 
           {/* Mobile FAB and Speed Dial Options */}
-          <div className="sm:hidden fixed bottom-20 right-6 z-40 flex flex-col items-end gap-3.5">
+          <div className="md:hidden fixed bottom-20 right-6 z-40 flex flex-col items-end gap-3.5">
             <AnimatePresence>
               {fabMenuOpen && (
                 <>

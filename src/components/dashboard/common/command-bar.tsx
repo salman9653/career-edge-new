@@ -27,12 +27,12 @@ export function CommandBar({
           <input
             type="text"
             readOnly
-            placeholder="Search... (⌘K)"
+            placeholder="Search..."
             className="w-full h-11 pl-10 pr-20 rounded-2xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-100/30 dark:bg-[#07070b]/60 text-sm focus:outline-none text-foreground transition-all placeholder-muted-foreground/60 cursor-pointer"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-            <kbd className="flex items-center justify-center w-6 h-6 rounded-lg border border-neutral-200/30 dark:border-neutral-800/30 bg-neutral-100/50 dark:bg-[#13141f]/75 text-[10px] font-mono text-muted-foreground/90">⌘</kbd>
-            <kbd className="flex items-center justify-center w-6 h-6 rounded-lg border border-neutral-200/30 dark:border-neutral-800/30 bg-neutral-100/50 dark:bg-[#13141f]/75 text-[10px] font-mono text-muted-foreground/90">K</kbd>
+            <kbd className="flex items-center justify-center w-7 h-7 rounded-lg border border-neutral-200/30 dark:border-neutral-800/30 bg-neutral-100/50 dark:bg-[#13141f]/75 text-[13px] font-mono text-muted-foreground/90">⌘</kbd>
+            <kbd className="flex items-center justify-center w-7 h-7 rounded-lg border border-neutral-200/30 dark:border-neutral-800/30 bg-neutral-100/50 dark:bg-[#13141f]/75 text-[13px] font-mono text-muted-foreground/90">K</kbd>
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DashboardLayout } from "@/components/dashboard/common/dashboard-layout";
 import { AccountTypeSelection } from "@/components/auth/account-type-selection";
@@ -21,6 +21,15 @@ export function DashboardLayoutClient({ children, user, profile }: DashboardLayo
 
   const showSettings = searchParams?.get("settings") === "true";
   const activeTab = searchParams?.get("tab") || "Account";
+
+  // Track whether we're on a mobile viewport — modal only renders on desktop/tablet
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   // Determine active module from pathname (supporting sub-routes)
   const activeModule = pathname === "/dashboard"
@@ -65,13 +74,17 @@ export function DashboardLayoutClient({ children, user, profile }: DashboardLayo
         {children}
       </DashboardLayout>
 
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={handleCloseSettings}
-        user={user}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-      />
+      {/* Settings modal — desktop only. Mobile uses /dashboard/settings page */}
+      {isDesktop && (
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={handleCloseSettings}
+          user={user}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+      )}
     </>
   );
 }
+

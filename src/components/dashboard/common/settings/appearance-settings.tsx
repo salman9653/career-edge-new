@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
 import { Sun, Moon, Monitor, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui";
+import { useThemeSync } from "@/hooks/useThemeSync";
 
 // Solid Colors definition matching image 1
 const SOLID_COLORS = [
@@ -47,7 +47,7 @@ const FONTS = [
 ];
 
 export function AppearanceSettings() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useThemeSync();
   const [mounted, setMounted] = useState(false);
   const [selectedColor, setSelectedColor] = useState("Indigo");
   const [selectedFont, setSelectedFont] = useState("Plus Jakarta Sans");
@@ -126,19 +126,7 @@ export function AppearanceSettings() {
   };
 
   const handleThemeSelect = (modeId: string) => {
-    setTheme(modeId);
-    // Sync to MongoDB
-    fetch("/api/preferences", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        themeMode: modeId,
-      }),
-    }).catch((err) => {
-      console.error("Failed to sync theme mode to MongoDB:", err);
-    });
+    setTheme(modeId); // useThemeSync handles DB sync automatically
   };
 
   if (!mounted) return null;
@@ -207,7 +195,7 @@ export function AppearanceSettings() {
         {/* Solid Colors */}
         <div className="space-y-2">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Solid Colours</span>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {SOLID_COLORS.map((color) => {
               const isSelected = selectedColor === color.name;
               return (
@@ -242,7 +230,7 @@ export function AppearanceSettings() {
         {/* Fun and New */}
         <div className="space-y-2">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">Fun and new</span>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {GRADIENT_COLORS.map((color) => {
               const isSelected = selectedColor === color.name;
               return (

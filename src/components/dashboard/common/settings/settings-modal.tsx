@@ -37,7 +37,7 @@ export function SettingsModal({
     <Dialog
       isOpen={isOpen}
       onClose={onClose}
-      className="max-w-4xl h-[50vh] p-0 sm:p-0 overflow-hidden bg-card text-foreground border-border shadow-2xl"
+      className="max-w-4xl h-[75vh] max-h-[640px] p-0 sm:p-0 overflow-hidden !bg-white dark:!bg-card text-foreground border-border shadow-2xl"
     >
       <div className="flex flex-row h-full w-full">
         {/* Sidebar Nav */}

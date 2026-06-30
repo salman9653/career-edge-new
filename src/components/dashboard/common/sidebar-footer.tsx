@@ -2,11 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
 import { Bell, MessageSquare, Sparkles, Sun, Moon, Monitor } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import { useClickOutside } from "@/hooks/useClickOutside"
+import { useThemeSync } from "@/hooks/useThemeSync"
 import { NotificationPopover } from "./notification-popover"
 import { ProfileCard } from "./profile-card"
 import { ProfileMenu } from "./profile-menu"
@@ -32,7 +32,7 @@ export function SidebarFooter({
   const notificationsRef = useRef<HTMLDivElement>(null)
 
   const [activePopover, setActivePopover] = useState<ActivePopover>("none")
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme } = useThemeSync()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {

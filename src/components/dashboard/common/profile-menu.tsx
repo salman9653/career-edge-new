@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
+import { useThemeSync } from "@/hooks/useThemeSync";
 import { cn } from "@/lib/utils";
 import { User as UserType } from "@/types";
 import {
@@ -35,7 +35,7 @@ export function ProfileMenu({
 }: ProfileMenuProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme } = useThemeSync();
   const [showThemeSubmenu, setShowThemeSubmenu] = useState(false);
 
   return (

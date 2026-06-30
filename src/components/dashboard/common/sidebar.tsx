@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -58,6 +58,26 @@ export function Sidebar({
   const { headerTitle, headerBackHref } = useUIStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+
+  // Collapse sidebar by default on mount/resize if in tablet range (< 1024px)
+  useEffect(() => {
+    const checkViewport = () => {
+      if (window.innerWidth < 1024) {
+        setIsCollapsed(true)
+      }
+    }
+    checkViewport()
+    window.addEventListener("resize", checkViewport)
+    return () => window.removeEventListener("resize", checkViewport)
+  }, [])
+
+  // Collapse sidebar if clicking outside on tablet viewports (< 1024px)
+  useClickOutside(sidebarRef, () => {
+    if (window.innerWidth < 1024 && !isCollapsed) {
+      setIsCollapsed(true)
+    }
+  })
 
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
   const avatarMenuRef = useRef<HTMLDivElement>(null)
@@ -105,6 +125,9 @@ export function Sidebar({
   const handleNavClick = (moduleId: string) => {
     onNavClick(moduleId)
     setIsMobileOpen(false) // Close drawer on mobile
+    if (window.innerWidth < 1024) {
+      setIsCollapsed(true)
+    }
   }
 
   // Resolve Header Title on top area
@@ -143,8 +166,8 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile Top Header (hidden on desktop) */}
-      <div className="md:hidden flex items-center justify-between w-full h-16 px-4 bg-background/80 backdrop-blur-md border-b border-neutral-200/50 dark:border-neutral-800/50 absolute top-0 left-0 z-30">
+      {/* Mobile Top Header (hidden on desktop/tablet) */}
+      <div className="sm:hidden flex items-center justify-between w-full h-16 px-4 bg-background/80 backdrop-blur-md border-b border-neutral-200/50 dark:border-neutral-800/50 absolute top-0 left-0 z-30">
         <div className="flex items-center space-x-2 flex-grow overflow-hidden">
           <Link href="/" className="relative w-8 h-8 flex items-center justify-center flex-shrink-0">
             <Image
@@ -211,72 +234,81 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Sidebar Container (desktop only) */}
+      {/* Sidebar Container (desktop/tablet) */}
       <aside
         className={cn(
-          "hidden md:flex flex-col h-full glass border-r shadow-lg transition-all duration-300 bg-neutral-50/50 dark:bg-neutral-950/20 static flex-shrink-0",
-          isCollapsed ? "w-20" : "w-64"
+          "hidden sm:flex flex-col h-full relative z-20 flex-shrink-0 w-20 transition-all duration-300",
+          !isCollapsed && "lg:w-64"
         )}
       >
-        {/* Sidebar Header / Logo */}
-        <div className="flex items-center justify-between h-20 px-5 border-b border-neutral-200/30 dark:border-neutral-800/30 relative">
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="relative w-9 h-9 group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
-              <Image
-                src="/logo_light.png"
-                alt="CareerEdge Logo"
-                width={36}
-                height={36}
-                className="w-full h-full object-contain dark:hidden"
-              />
-              <Image
-                src="/logo_dark.png"
-                alt="CareerEdge Logo"
-                width={36}
-                height={36}
-                className="w-full h-full object-contain hidden dark:block"
-              />
-            </div>
-            {!isCollapsed && (
-              <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-neutral-900 to-neutral-700 dark:from-white dark:to-neutral-300 bg-clip-text text-transparent">
-                Career<span className="text-primary">Edge</span>
-              </span>
-            )}
-          </Link>
+        {/* Inner Panel - overlays on tablet, flex child on desktop */}
+        <div
+          ref={sidebarRef}
+          className={cn(
+            "h-full flex flex-col glass border-r shadow-lg transition-all duration-300 bg-neutral-50/50 dark:bg-neutral-950/20 w-20 relative",
+            !isCollapsed && "w-64 sm:absolute sm:left-0 sm:top-0 sm:h-full sm:z-30 sm:shadow-2xl lg:relative lg:shadow-none"
+          )}
+        >
+          {/* Sidebar Header / Logo */}
+          <div className="flex items-center justify-between h-20 px-5 border-b border-neutral-200/30 dark:border-neutral-800/30 relative">
+            <Link href="/" className="flex items-center space-x-3 group">
+              <div className="relative w-9 h-9 group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
+                <Image
+                  src="/logo_light.png"
+                  alt="CareerEdge Logo"
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-contain dark:hidden"
+                />
+                <Image
+                  src="/logo_dark.png"
+                  alt="CareerEdge Logo"
+                  width={36}
+                  height={36}
+                  className="w-full h-full object-contain hidden dark:block"
+                />
+              </div>
+              {!isCollapsed && (
+                <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-neutral-900 to-neutral-700 dark:from-white dark:to-neutral-300 bg-clip-text text-transparent">
+                  Career<span className="text-primary">Edge</span>
+                </span>
+              )}
+            </Link>
 
-          {/* Collapse toggle button for Desktop only */}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden md:flex absolute -right-3 top-8 w-6.5 h-6.5 rounded-full border border-neutral-200/60 dark:border-neutral-800/60 bg-background shadow-md items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-transform hover:scale-105 z-50"
-            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
-          </button>
-        </div>
+            {/* Collapse toggle button */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden sm:flex absolute -right-3 top-8 w-6.5 h-6.5 rounded-full border border-neutral-200/60 dark:border-neutral-800/60 bg-background shadow-md items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-transform hover:scale-105 z-50"
+              aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+            </button>
+          </div>
 
-        {/* Command Search Section */}
-        <div className="hidden md:block">
-          <CommandBar
+          {/* Command Search Section */}
+          <div className="hidden sm:block">
+            <CommandBar
+              isCollapsed={isCollapsed}
+              onSearchClick={onSearchClick}
+            />
+          </div>
+
+          {/* Navigation Links */}
+          <SidebarNav
+            navItems={filteredNavItems}
+            activeModule={activeModule}
             isCollapsed={isCollapsed}
-            onSearchClick={onSearchClick}
+            onNavClick={handleNavClick}
           />
-        </div>
 
-        {/* Navigation Links */}
-        <SidebarNav
-          navItems={filteredNavItems}
-          activeModule={activeModule}
-          isCollapsed={isCollapsed}
-          onNavClick={handleNavClick}
-        />
-
-        {/* Sidebar Footer Section */}
-        <div className="hidden md:block">
-          <SidebarFooter
-            user={user}
-            isCollapsed={isCollapsed}
-            onOnboardingOpen={onOnboardingOpen}
-          />
+          {/* Sidebar Footer Section */}
+          <div className="hidden sm:block">
+            <SidebarFooter
+              user={user}
+              isCollapsed={isCollapsed}
+              onOnboardingOpen={onOnboardingOpen}
+            />
+          </div>
         </div>
       </aside>
     </>

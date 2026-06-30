@@ -177,7 +177,7 @@ export function DataTableToolbar({
   return (
     <>
       {/* Mobile Layout (Search & Action Buttons in a Single Row) */}
-      <div className="flex md:hidden flex-row items-center gap-2 w-full">
+      <div className="flex sm:hidden flex-row items-center gap-2 w-full">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -286,26 +286,30 @@ export function DataTableToolbar({
       </div>
 
       {/* Desktop/Tablet Layout */}
-      <div className="hidden md:flex flex-col lg:flex-row gap-3.5 items-stretch lg:items-center justify-between">
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-3.5 flex-grow w-full">
-          <div className="flex items-center gap-3">
-            {headerBackHref && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.push(headerBackHref)}
-                className="w-9 h-9 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
-              >
-                <ArrowLeft className="w-4.5 h-4.5" />
-              </Button>
-            )}
-            {capitalizedTitle && (
-              <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
-                {capitalizedTitle}
-              </h1>
-            )}
-          </div>
-          <div className="relative flex-grow w-full">
+      <div className="hidden sm:flex flex-col lg:flex-row gap-4 w-full">
+        {/* Title Area - full width on tablet, auto on desktop */}
+        <div className="flex items-center gap-3 w-full lg:w-auto">
+          {headerBackHref && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push(headerBackHref)}
+              className="w-9 h-9 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
+            >
+              <ArrowLeft className="w-4.5 h-4.5" />
+            </Button>
+          )}
+          {capitalizedTitle && (
+            <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
+              {capitalizedTitle}
+            </h1>
+          )}
+        </div>
+
+        {/* Search & Actions Row on Tablet, Inline on Desktop */}
+        <div className="flex flex-col sm:flex-row gap-3.5 items-stretch sm:items-center justify-between flex-grow w-full lg:w-auto">
+          {/* Search input */}
+          <div className="relative flex-grow max-w-md w-full">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
             <Input
               type="text"
@@ -315,136 +319,139 @@ export function DataTableToolbar({
               className="pl-11 h-11 bg-neutral-50/50 dark:bg-neutral-900/40 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 w-full"
             />
           </div>
-        </div>
-        <div className="flex items-center justify-center lg:justify-start gap-2 flex-wrap lg:flex-nowrap w-full lg:w-auto">
-          <Tooltip content="Select Rows" side="bottom">
-            <Button
-              variant="ghost"
-              onClick={() => setSelectMode(true)}
-              className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
-            >
-              <CheckSquare className="w-4.5 h-4.5 text-muted-foreground" />
-            </Button>
-          </Tooltip>
 
-          {/* Card View Sort Dropdown */}
-          {viewMode === "card" && sortableColumns.length > 0 && onSort && (
-            <div className="relative" ref={sortMenuRef}>
-              <Tooltip content="Sort Options" side="bottom">
-                <Button
-                  variant="ghost"
-                  onClick={() => setSortMenuOpen(!sortMenuOpen)}
-                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
-                >
-                  <ArrowUpDown className="w-4.5 h-4.5 text-muted-foreground" />
-                </Button>
-              </Tooltip>
-              {sortMenuOpen && (
-                <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 bg-background/95 backdrop-blur-md">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Sort By
-                  </div>
-                  <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-1" />
-                  {sortableColumns.map((col) => {
-                    const isSorted = sortKey === col.key;
-                    return (
-                      <button
-                        key={col.key}
-                        onClick={() => {
-                          onSort(col.key);
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left",
-                          isSorted
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
-                        )}
-                      >
-                        <span>{col.label}</span>
-                        {isSorted && (
-                          <span className="text-[10px] font-extrabold uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded">
-                            {sortOrder === "asc" ? "▲" : "▼"}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-          <div className="relative">
-            <Tooltip content="Filter Options" side="bottom">
+          {/* Action Toolbar buttons */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
+            <Tooltip content="Select Rows" side="bottom">
               <Button
                 variant="ghost"
-                onClick={onFilterClick}
-                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer overflow-visible p-0"
+                onClick={() => setSelectMode(true)}
+                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
               >
-                <SlidersHorizontal className="w-4.5 h-4.5 text-muted-foreground" />
+                <CheckSquare className="w-4.5 h-4.5 text-muted-foreground" />
               </Button>
             </Tooltip>
-            {appliedFiltersCount > 0 && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClearFilters?.(e);
-                }}
-                onMouseEnter={() => setIsBadgeHovered(true)}
-                onMouseLeave={() => setIsBadgeHovered(false)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary hover:bg-red-500 text-primary-foreground hover:text-white flex items-center justify-center text-[10px] font-extrabold shadow-md cursor-pointer transition-all duration-150 select-none z-10 animate-in zoom-in-50 duration-200"
-                title="Clear all filters"
+
+            {/* Card View Sort Dropdown */}
+            {viewMode === "card" && sortableColumns.length > 0 && onSort && (
+              <div className="relative" ref={sortMenuRef}>
+                <Tooltip content="Sort Options" side="bottom">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setSortMenuOpen(!sortMenuOpen)}
+                    className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
+                  >
+                    <ArrowUpDown className="w-4.5 h-4.5 text-muted-foreground" />
+                  </Button>
+                </Tooltip>
+                {sortMenuOpen && (
+                  <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 bg-background/95 backdrop-blur-md">
+                    <div className="px-2.5 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Sort By
+                    </div>
+                    <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-1" />
+                    {sortableColumns.map((col) => {
+                      const isSorted = sortKey === col.key;
+                      return (
+                        <button
+                          key={col.key}
+                          onClick={() => {
+                            onSort(col.key);
+                            setSortMenuOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-lg cursor-pointer transition-colors text-left",
+                            isSorted
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                          )}
+                        >
+                          <span>{col.label}</span>
+                          {isSorted && (
+                            <span className="text-[10px] font-extrabold uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                              {sortOrder === "asc" ? "▲" : "▼"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="relative">
+              <Tooltip content="Filter Options" side="bottom">
+                <Button
+                  variant="ghost"
+                  onClick={onFilterClick}
+                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer overflow-visible p-0"
+                >
+                  <SlidersHorizontal className="w-4.5 h-4.5 text-muted-foreground" />
+                </Button>
+              </Tooltip>
+              {appliedFiltersCount > 0 && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClearFilters?.(e);
+                  }}
+                  onMouseEnter={() => setIsBadgeHovered(true)}
+                  onMouseLeave={() => setIsBadgeHovered(false)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-primary hover:bg-red-500 text-primary-foreground hover:text-white flex items-center justify-center text-[10px] font-extrabold shadow-md cursor-pointer transition-all duration-150 select-none z-10 animate-in zoom-in-50 duration-200"
+                  title="Clear all filters"
+                >
+                  {isBadgeHovered ? <X className="w-3 h-3 stroke-[3]" /> : appliedFiltersCount}
+                </span>
+              )}
+            </div>
+            <Tooltip content="Export CSV" side="bottom">
+              <Button
+                variant="ghost"
+                onClick={onExportCSV}
+                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
               >
-                {isBadgeHovered ? <X className="w-3 h-3 stroke-[3]" /> : appliedFiltersCount}
-              </span>
+                <Download className="w-4.5 h-4.5 text-muted-foreground" />
+              </Button>
+            </Tooltip>
+
+            {/* Unified View Switcher inside Toolbar */}
+            {showViewSwitcher && (
+              <div className="hidden sm:flex items-center bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-1 rounded-xl gap-1 flex-shrink-0 h-10 sm:h-11">
+                <Tooltip content="List View" side="bottom">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
+                      viewMode === "list"
+                        ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                <Tooltip content="Card View" side="bottom">
+                  <button
+                    onClick={() => setViewMode("card")}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
+                      viewMode === "card"
+                        ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+              </div>
+            )}
+
+            {primaryAction && (
+              <Button onClick={primaryAction.onClick} variant="premium" className="hidden sm:flex h-10 sm:h-11 px-4 sm:px-5 rounded-xl font-bold text-xs">
+                {primaryAction.label}
+              </Button>
             )}
           </div>
-          <Tooltip content="Export CSV" side="bottom">
-            <Button
-              variant="ghost"
-              onClick={onExportCSV}
-              className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer p-0"
-            >
-              <Download className="w-4.5 h-4.5 text-muted-foreground" />
-            </Button>
-          </Tooltip>
-
-          {/* Unified View Switcher inside Toolbar */}
-          {showViewSwitcher && (
-            <div className="hidden md:flex items-center bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-1 rounded-xl gap-1 flex-shrink-0 h-10 sm:h-11">
-              <Tooltip content="List View" side="bottom">
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
-                    viewMode === "list"
-                      ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              <Tooltip content="Card View" side="bottom">
-                <button
-                  onClick={() => setViewMode("card")}
-                  className={cn(
-                    "p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer h-8 w-8",
-                    viewMode === "card"
-                      ? "bg-background text-foreground shadow-sm border border-neutral-200/20 dark:border-neutral-800/20"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </div>
-          )}
-
-          {primaryAction && (
-            <Button onClick={primaryAction.onClick} variant="premium" className="hidden sm:flex h-10 sm:h-11 px-4 sm:px-5 rounded-xl font-bold text-xs">
-              {primaryAction.label}
-            </Button>
-          )}
         </div>
       </div>
     </>
