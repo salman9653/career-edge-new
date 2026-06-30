@@ -22,6 +22,32 @@ const options: MongoClientOptions = {
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
+async function ensureIndexes(mongoClient: MongoClient) {
+  try {
+    const db = mongoClient.db();
+    
+    // Unique indexes on profiles to prevent duplicates
+    await db.collection("company_profiles").createIndex({ userId: 1 }, { unique: true, sparse: true });
+    await db.collection("candidate_profiles").createIndex({ userId: 1 }, { unique: true, sparse: true });
+    
+    // Performance indexes for questions module
+    await db.collection("questions").createIndex({ companyId: 1 });
+    await db.collection("questions").createIndex({ status: 1 });
+    await db.collection("questions").createIndex({ createdAt: -1 });
+    // Text search index for standard Approach 1 server search
+    await db.collection("questions").createIndex({ question: "text", categories: "text" });
+
+    // Performance indexes for jobs module
+    await db.collection("jobs").createIndex({ companyId: 1 });
+    await db.collection("jobs").createIndex({ status: 1 });
+    await db.collection("jobs").createIndex({ createdAt: -1 });
+    
+    console.log("Database indexes verified successfully.");
+  } catch (err) {
+    console.error("Database index creation warning:", err);
+  }
+}
+
 if (process.env.NODE_ENV === "development") {
   // In development mode, use a global variable so that the value
   // is preserved across module reloads caused by HMR (Hot Module Replacement).
@@ -33,7 +59,10 @@ if (process.env.NODE_ENV === "development") {
   if (!globalWithMongo._mongoClientPromise) {
     client = new MongoClient(uri, options);
     globalWithMongo._mongoClient = client;
-    globalWithMongo._mongoClientPromise = client.connect().catch((err) => {
+    globalWithMongo._mongoClientPromise = client.connect().then(async (c) => {
+      await ensureIndexes(c);
+      return c;
+    }).catch((err) => {
       console.error("\n==================================================");
       console.error("ERROR: MongoDB Connection Refused.");
       console.error("Please verify:");
@@ -49,7 +78,10 @@ if (process.env.NODE_ENV === "development") {
   clientPromise = globalWithMongo._mongoClientPromise!;
 } else {
   client = new MongoClient(uri, options);
-  clientPromise = client.connect().catch((err) => {
+  clientPromise = client.connect().then(async (c) => {
+    await ensureIndexes(c);
+    return c;
+  }).catch((err) => {
     console.error("Production MongoDB connection failed:", err.message);
     throw err;
   });

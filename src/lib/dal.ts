@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import clientPromise from "@/lib/db";
 import { CandidateProfile, CompanyProfile, User } from "@/types";
 import { Db, ObjectId } from "mongodb";
+import { cache } from "react";
 
 async function findUserByUserId(db: Db, userId: string) {
   if (!userId) return null;
@@ -18,7 +19,7 @@ async function findUserByUserId(db: Db, userId: string) {
 }
 
 
-export async function getSession() {
+export const getSession = cache(async () => {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -28,18 +29,18 @@ export async function getSession() {
     console.error("Failed to retrieve session in DAL:", err);
     return null;
   }
-}
+});
 
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const session = await getSession();
   if (!session || !session.user) return null;
   return session.user as User;
-}
+});
 
-export async function getProfile(
+export const getProfile = cache(async (
   userId: string,
   accountType: string
-): Promise<CandidateProfile | CompanyProfile | null> {
+): Promise<CandidateProfile | CompanyProfile | null> => {
   try {
     const client = await clientPromise;
     const db = client.db();
@@ -51,50 +52,83 @@ export async function getProfile(
     console.error("Failed to get profile in DAL:", err);
     return null;
   }
-}
+});
 
-export async function getCompaniesWithUsers() {
+export async function getCompaniesWithUsers(searchQuery = "", skip = 0, limit = 20) {
   try {
     const client = await clientPromise;
     const db = client.db();
     
-    // We fetch all records from company_profiles
-    const profiles = await db.collection("company_profiles").find({}).toArray();
-    
-    // For each profile, fetch the associated user and job count
-    const companies = await Promise.all(
-      profiles.map(async (profile) => {
-        // Fetch user details
-        const user = await findUserByUserId(db, profile.userId);
-        
-        // Fetch job postings count (assumes collection name is "jobs")
-        let jobsCount = 0;
-        try {
-          jobsCount = await db.collection("jobs").countDocuments({ companyId: profile.userId });
-        } catch (e) {
-          // If collection doesn't exist, it will return 0 or error out
-        }
-        
-        return {
-          id: profile._id ? profile._id.toString() : profile.userId,
-          userId: profile.userId,
-          companyName: profile.companyName || "Unnamed Company",
-          industry: profile.industry || "N/A",
-          location: profile.location || "N/A",
-          websiteUrl: profile.websiteUrl || "",
-          companySize: profile.companySize || "N/A",
-          companyType: profile.companyType || "Private", // default
-          subscription: profile.activePlan || profile.subscription || "Free",
-          status: profile.status || "Active",
-          jobsPosted: jobsCount,
-          memberSince: user?.createdAt || profile.createdAt || new Date(),
-          image: user?.image || null,
-          email: user?.email || "",
-        };
-      })
+    const pipeline: any[] = [];
+
+    // 1. Join with users collection
+    pipeline.push(
+      {
+        $lookup: {
+          from: "user",
+          localField: "userId",
+          foreignField: "id",
+          as: "userData",
+        },
+      },
+      { $unwind: { path: "$userData", preserveNullAndEmptyArrays: true } }
     );
-    
-    return JSON.parse(JSON.stringify(companies));
+
+    // 2. Filter search query
+    if (searchQuery.trim()) {
+      const regex = new RegExp(searchQuery, "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { "userData.name": { $regex: regex } },
+            { "userData.email": { $regex: regex } },
+            { companyName: { $regex: regex } },
+            { industry: { $regex: regex } },
+            { location: { $regex: regex } },
+          ],
+        },
+      });
+    }
+
+    // 3. Count jobs
+    pipeline.push(
+      {
+        $lookup: {
+          from: "jobs",
+          localField: "userId",
+          foreignField: "companyId",
+          as: "jobsData",
+        },
+      }
+    );
+
+    // 4. Project mapped fields
+    pipeline.push({
+      $project: {
+        id: { $cond: { if: "$_id", then: { $toString: "$_id" }, else: "$userId" } },
+        userId: 1,
+        companyName: { $ifNull: ["$companyName", "Unnamed Company"] },
+        industry: { $ifNull: ["$industry", "N/A"] },
+        location: { $ifNull: ["$location", "N/A"] },
+        websiteUrl: { $ifNull: ["$websiteUrl", ""] },
+        companySize: { $ifNull: ["$companySize", "N/A"] },
+        companyType: { $ifNull: ["$companyType", "Private"] },
+        subscription: { $ifNull: ["$activePlan", { $ifNull: ["$subscription", "Free"] }] },
+        status: { $ifNull: ["$status", "Active"] },
+        jobsPosted: { $size: "$jobsData" },
+        memberSince: { $ifNull: ["$userData.createdAt", "$createdAt"] },
+        image: { $ifNull: ["$userData.image", null] },
+        email: { $ifNull: ["$userData.email", ""] },
+      },
+    });
+
+    // 5. Pagination
+    pipeline.push({ $sort: { companyName: 1 } });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    const results = await db.collection("company_profiles").aggregate(pipeline).toArray();
+    return JSON.parse(JSON.stringify(results));
   } catch (err) {
     console.error("Failed to get companies with users in DAL:", err);
     return [];
@@ -141,34 +175,65 @@ export async function getCompanyDetails(companyId: string) {
   }
 }
 
-export async function getCandidatesWithUsers() {
+export async function getCandidatesWithUsers(searchQuery = "", skip = 0, limit = 20) {
   try {
     const client = await clientPromise;
     const db = client.db();
     
-    const profiles = await db.collection("candidate_profiles").find({}).toArray();
-    
-    const candidates = await Promise.all(
-      profiles.map(async (profile) => {
-        const user = await findUserByUserId(db, profile.userId);
-        
-        return {
-          id: profile._id ? profile._id.toString() : profile.userId,
-          userId: profile.userId,
-          name: user?.name || "Unnamed Candidate",
-          jobTitle: profile.jobTitle || "Job Seeker",
-          experience: profile.experience || "Not Specified",
-          status: profile.status || "Active",
-          subscription: profile.activePlan || profile.subscription || "Free",
-          applicationsCount: 0,
-          memberSince: user?.createdAt || profile.createdAt || new Date(),
-          image: user?.image || null,
-          email: user?.email || "",
-        };
-      })
+    const pipeline: any[] = [];
+
+    // 1. Join with users collection
+    pipeline.push(
+      {
+        $lookup: {
+          from: "user",
+          localField: "userId",
+          foreignField: "id",
+          as: "userData",
+        },
+      },
+      { $unwind: { path: "$userData", preserveNullAndEmptyArrays: true } }
     );
-    
-    return JSON.parse(JSON.stringify(candidates));
+
+    // 2. Filter search query
+    if (searchQuery.trim()) {
+      const regex = new RegExp(searchQuery, "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { "userData.name": { $regex: regex } },
+            { "userData.email": { $regex: regex } },
+            { jobTitle: { $regex: regex } },
+            { experience: { $regex: regex } },
+          ],
+        },
+      });
+    }
+
+    // 3. Project fields mapping, explicitly leaving out resumeBase64
+    pipeline.push({
+      $project: {
+        id: { $cond: { if: "$_id", then: { $toString: "$_id" }, else: "$userId" } },
+        userId: 1,
+        name: { $ifNull: ["$userData.name", "Unnamed Candidate"] },
+        jobTitle: { $ifNull: ["$jobTitle", "Job Seeker"] },
+        experience: { $ifNull: ["$experience", "Not Specified"] },
+        status: { $ifNull: ["$status", "Active"] },
+        subscription: { $ifNull: ["$activePlan", { $ifNull: ["$subscription", "Free"] }] },
+        applicationsCount: { $literal: 0 },
+        memberSince: { $ifNull: ["$userData.createdAt", "$createdAt"] },
+        image: { $ifNull: ["$userData.image", null] },
+        email: { $ifNull: ["$userData.email", ""] },
+      },
+    });
+
+    // 4. Pagination
+    pipeline.push({ $sort: { name: 1 } });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    const results = await db.collection("candidate_profiles").aggregate(pipeline).toArray();
+    return JSON.parse(JSON.stringify(results));
   } catch (err) {
     console.error("Failed to get candidates with users in DAL:", err);
     return [];
@@ -240,13 +305,28 @@ export async function getAdminDetails(adminId: string) {
   }
 }
 
-export async function getCompanyQuestions(companyId: string) {
+export async function getCompanyQuestions(companyId: string, searchQuery = "", skip = 0, limit = 20) {
   try {
     const client = await clientPromise;
     const db = client.db();
     
+    const query: Record<string, any> = { companyId };
+    
+    if (searchQuery.trim()) {
+      const regex = new RegExp(searchQuery, "i");
+      query.$or = [
+        { question: { $regex: regex } },
+        { categories: { $regex: regex } }
+      ];
+    }
+    
     // Find questions for this company
-    const questions = await db.collection("questions").find({ companyId }).toArray();
+    const questions = await db.collection("questions")
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
     
     return JSON.parse(JSON.stringify(
       questions.map(q => ({

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/dashboard/common";
 import Image from "next/image";
@@ -13,8 +13,65 @@ interface ManageCandidatesClientProps {
   candidates: CandidateRow[];
 }
 
-export function ManageCandidatesClient({ candidates }: ManageCandidatesClientProps) {
+export function ManageCandidatesClient({ candidates: initialCandidates }: ManageCandidatesClientProps) {
   const router = useRouter();
+  const [candidates, setCandidates] = useState<CandidateRow[]>(initialCandidates);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialCandidates.length === 20);
+  const [loading, setLoading] = useState(false);
+
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    const nextPage = page + 1;
+    try {
+      const res = await fetch(`/api/candidates?search=${encodeURIComponent(search)}&page=${nextPage}&limit=20`);
+      const resData = await res.json();
+      if (resData.data && Array.isArray(resData.data)) {
+        if (resData.data.length < 20) {
+          setHasMore(false);
+        }
+        setCandidates((prev) => [...prev, ...resData.data]);
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more candidates:", err);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (search === "") {
+      setCandidates(initialCandidates);
+      setPage(1);
+      setHasMore(initialCandidates.length === 20);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/candidates?search=${encodeURIComponent(search)}&page=1&limit=20`);
+        const resData = await res.json();
+        if (resData.data && Array.isArray(resData.data)) {
+          setCandidates(resData.data);
+          setPage(1);
+          setHasMore(resData.data.length === 20);
+        }
+      } catch (err) {
+        console.error("Failed to search candidates:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [search, initialCandidates]);
 
   // Set TopBar details dynamically
   useEffect(() => {
@@ -236,6 +293,11 @@ export function ManageCandidatesClient({ candidates }: ManageCandidatesClientPro
         entityName="Candidate"
         onRowClick={handleRowClick}
         renderCard={renderCandidateCard}
+        searchQuery={search}
+        onSearchChange={setSearch}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+        isLoadingMore={loading}
       />
     </div>
   );

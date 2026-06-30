@@ -14,6 +14,7 @@ interface DataTableContentProps<T> {
   toggleSelectRow: (id: string, e: React.MouseEvent) => void;
   handleSort: (key: string) => void;
   onRowClick?: (row: T) => void;
+  loaderRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function DataTableContent<T extends Record<string, any>>({
@@ -25,6 +26,7 @@ export function DataTableContent<T extends Record<string, any>>({
   toggleSelectRow,
   handleSort,
   onRowClick,
+  loaderRef,
 }: DataTableContentProps<T>) {
   return (
     <div className="w-full flex-1 min-h-0 rounded-2xl glass border border-neutral-200/30 dark:border-neutral-800/50 overflow-hidden shadow-xl flex flex-col">
@@ -118,6 +120,15 @@ export function DataTableContent<T extends Record<string, any>>({
               <tr>
                 <td colSpan={columns.length} className="p-12 text-center text-muted-foreground text-sm">
                   No records found.
+                </td>
+              </tr>
+            )}
+            {loaderRef && (
+              <tr>
+                <td colSpan={columns.length} className="p-0 border-0 bg-transparent">
+                  <div ref={loaderRef} className="w-full py-4 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  </div>
                 </td>
               </tr>
             )}

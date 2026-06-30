@@ -18,6 +18,7 @@ interface DataTableCardsProps<T> {
     toggleSelect: (e: React.MouseEvent) => void,
     selectMode: boolean
   ) => React.ReactNode;
+  loaderRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function DataTableCards<T extends Record<string, any>>({
@@ -28,6 +29,7 @@ export function DataTableCards<T extends Record<string, any>>({
   toggleSelectRow,
   onRowClick,
   renderCard,
+  loaderRef,
 }: DataTableCardsProps<T>) {
   return (
     <div className="w-full flex-1 overflow-y-auto min-h-0 pr-1 pb-20 sm:pb-4">
@@ -105,6 +107,11 @@ export function DataTableCards<T extends Record<string, any>>({
       ) : (
         <div className="p-12 text-center text-muted-foreground text-sm rounded-2xl glass border border-neutral-200/30 dark:border-neutral-800/50">
           No records found.
+        </div>
+      )}
+      {loaderRef && (
+        <div ref={loaderRef} className="w-full py-6 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       )}
     </div>

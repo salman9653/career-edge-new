@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { DataTableToolbar } from "./data-table-toolbar";
 import { ExportDialog } from "./export-dialog";
 import { FilterSheet, FilterConfig } from "./filter-sheet";
@@ -33,6 +33,12 @@ interface DataTableProps<T> {
     selectMode: boolean
   ) => React.ReactNode;
   onDeleteSelected?: (ids: string[]) => void | boolean | Promise<void | boolean>;
+  // Server-side search & Lazy loading props
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 const DEFAULT_OPTIONS: Record<string, string[]> = {
@@ -51,12 +57,21 @@ export function DataTable<T extends Record<string, any>>({
   onRowClick,
   renderCard,
   onDeleteSelected,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
+  onLoadMore,
+  hasMore = false,
+  isLoadingMore = false,
 }: DataTableProps<T>) {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { viewMode } = useUIStore();
   const activeViewMode = isMobile ? "card" : viewMode;
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [localSearchQuery, setLocalSearchQuery] = useState("");
+  const isServerSearch = onSearchChange !== undefined;
+  const searchQuery = isServerSearch ? (externalSearchQuery ?? "") : localSearchQuery;
+  const setSearchQuery = isServerSearch ? onSearchChange : setLocalSearchQuery;
+
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectMode, setSelectMode] = useState(false);
@@ -68,6 +83,33 @@ export function DataTable<T extends Record<string, any>>({
 
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeletingSelected, setIsDeletingSelected] = useState(false);
+
+  const loaderRef = useRef<HTMLDivElement>(null);
+
+  // Setup IntersectionObserver for Lazy Loading
+  useEffect(() => {
+    if (!onLoadMore || !hasMore || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentLoader = loaderRef.current;
+    if (currentLoader) {
+      observer.observe(currentLoader);
+    }
+
+    return () => {
+      if (currentLoader) {
+        observer.unobserve(currentLoader);
+      }
+    };
+  }, [onLoadMore, hasMore, isLoadingMore]);
 
   const handleDeleteSelected = () => {
     setIsDeleteConfirmOpen(true);
@@ -127,7 +169,7 @@ export function DataTable<T extends Record<string, any>>({
 
   const processedData = useMemo(() => {
     let result = [...data];
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && !isServerSearch) {
       const q = searchQuery.toLowerCase();
       result = result.filter((r) => r[searchKey] ? String(r[searchKey]).toLowerCase().includes(q) : false);
     }
@@ -217,12 +259,14 @@ export function DataTable<T extends Record<string, any>>({
           columns={columns} processedData={processedData} selectMode={selectMode}
           selectedIds={selectedIds} toggleSelectAll={toggleSelectAll} toggleSelectRow={toggleSelectRow}
           handleSort={handleSort} onRowClick={onRowClick}
+          loaderRef={hasMore ? loaderRef : undefined}
         />
       ) : (
         <DataTableCards
           columns={columns} processedData={processedData} selectMode={selectMode}
           selectedIds={selectedIds} toggleSelectRow={toggleSelectRow}
           onRowClick={onRowClick} renderCard={renderCard}
+          loaderRef={hasMore ? loaderRef : undefined}
         />
       )}
       <ExportDialog

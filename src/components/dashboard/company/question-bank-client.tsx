@@ -32,11 +32,69 @@ interface QuestionBankClientProps {
   children: React.ReactNode;
 }
 
-export function QuestionBankClient({ questions, children }: QuestionBankClientProps) {
+export function QuestionBankClient({ questions: initialQuestions, children }: QuestionBankClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [fabMenuOpen, setFabMenuOpen] = React.useState(false);
+  
+  const [questions, setQuestions] = React.useState<QuestionRow[]>(initialQuestions);
+  const [search, setSearch] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [hasMore, setHasMore] = React.useState(initialQuestions.length === 20);
+  const [loading, setLoading] = React.useState(false);
+
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    const nextPage = page + 1;
+    try {
+      const res = await fetch(`/api/questions?search=${encodeURIComponent(search)}&page=${nextPage}&limit=20`);
+      const resData = await res.json();
+      if (resData.data && Array.isArray(resData.data)) {
+        if (resData.data.length < 20) {
+          setHasMore(false);
+        }
+        setQuestions((prev) => [...prev, ...resData.data]);
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more questions:", err);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (search === "") {
+      setQuestions(initialQuestions);
+      setPage(1);
+      setHasMore(initialQuestions.length === 20);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/questions?search=${encodeURIComponent(search)}&page=1&limit=20`);
+        const resData = await res.json();
+        if (resData.data && Array.isArray(resData.data)) {
+          setQuestions(resData.data);
+          setPage(1);
+          setHasMore(resData.data.length === 20);
+        }
+      } catch (err) {
+        console.error("Failed to search questions:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [search, initialQuestions]);
 
   const isAddRoute = pathname === "/dashboard/questions/add" || pathname === "/dashboard/questions/generate";
   const isEditRoute = pathname?.endsWith("/edit");
@@ -356,6 +414,11 @@ export function QuestionBankClient({ questions, children }: QuestionBankClientPr
               label: "Add Question",
               onClick: () => router.push("/dashboard/questions/add"),
             }}
+            searchQuery={search}
+            onSearchChange={setSearch}
+            onLoadMore={loadMore}
+            hasMore={hasMore}
+            isLoadingMore={loading}
             onDeleteSelected={async (ids) => {
               try {
                 const res = await fetch("/api/questions", {
@@ -364,6 +427,7 @@ export function QuestionBankClient({ questions, children }: QuestionBankClientPr
                   body: JSON.stringify({ ids }),
                 });
                 if (res.ok) {
+                  setQuestions((prev) => prev.filter((q) => !ids.includes(q.id)));
                   startTransition(() => {
                     router.refresh();
                   });

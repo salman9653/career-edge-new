@@ -288,6 +288,38 @@ export function ProfileButton() {
 
 ---
 
+## Data Fetching & Caching Conventions
+
+### Request Memoization (`react/cache`)
+- Always wrap session and profile data fetching functions in React's `cache` (from `'react'`) in `dal.ts` to prevent duplicate database calls during a single page render tree.
+  ```typescript
+  import { cache } from 'react'
+  export const getCachedSession = cache(async () => {
+    return await auth.api.getSession({ headers: await headers() })
+  })
+  ```
+
+### Cross-Request Caching (`"use cache"`)
+- Use the `"use cache"` directive inside DAL data-retrieval functions for page/module listings.
+- Attach unique cache tags formatted as `[moduleName]-[userId]` or `[moduleName]-[entityId]`.
+- Trigger on-demand invalidation via `revalidateTag` in mutation endpoints (API routes or Server Actions) immediately after database updates.
+
+### List Projections & Heavy Payload Guarding
+- **Never fetch large fields** (like `resumeBase64`, heavy description blobs, or secondary object arrays) inside list queries.
+- Explicitly project out large fields during list retrieval (e.g., `{ projection: { resumeBase64: 0 } }`).
+- Fetch heavy fields on-demand only when a user navigates to the detailed view or triggers a download action.
+
+### N+1 Query Elimination
+- Never query references or run database counts inside a loop (e.g., `.map()`).
+- Always use MongoDB `$lookup` inside an `.aggregate()` pipeline to perform single-trip database joins and counts.
+
+### Lazy Loading & Server-Side Search
+- Default to **Lazy Loading (Infinite Scroll)** instead of page-based pagination.
+- Fetch the initial batch (e.g. 20 items) on the server, and expose a `GET` API endpoint to fetch subsequent pages (`?page=2&limit=20`) dynamically on scroll.
+- Handle search **on the server** (Approach 1). Debounce the search input on the client by 300ms, query MongoDB using case-insensitive regex or text indexing on the server, apply pagination, and return only the matching paginated slice.
+
+---
+
 ## TypeScript Standards
 
 - **Strict mode** is enabled — never use `@ts-ignore` or `@ts-nocheck`

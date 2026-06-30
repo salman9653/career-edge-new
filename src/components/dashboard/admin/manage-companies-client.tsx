@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, ColumnDef } from "@/components/dashboard/common";
 import { User, CheckSquare, Square } from "lucide-react";
@@ -29,8 +29,65 @@ interface ManageCompaniesClientProps {
   companies: CompanyRow[];
 }
 
-export function ManageCompaniesClient({ companies }: ManageCompaniesClientProps) {
+export function ManageCompaniesClient({ companies: initialCompanies }: ManageCompaniesClientProps) {
   const router = useRouter();
+  const [companies, setCompanies] = useState<CompanyRow[]>(initialCompanies);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialCompanies.length === 20);
+  const [loading, setLoading] = useState(false);
+
+  const loadMore = async () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    const nextPage = page + 1;
+    try {
+      const res = await fetch(`/api/companies?search=${encodeURIComponent(search)}&page=${nextPage}&limit=20`);
+      const resData = await res.json();
+      if (resData.data && Array.isArray(resData.data)) {
+        if (resData.data.length < 20) {
+          setHasMore(false);
+        }
+        setCompanies((prev) => [...prev, ...resData.data]);
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Failed to load more companies:", err);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (search === "") {
+      setCompanies(initialCompanies);
+      setPage(1);
+      setHasMore(initialCompanies.length === 20);
+      return;
+    }
+
+    const handler = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/companies?search=${encodeURIComponent(search)}&page=1&limit=20`);
+        const resData = await res.json();
+        if (resData.data && Array.isArray(resData.data)) {
+          setCompanies(resData.data);
+          setPage(1);
+          setHasMore(resData.data.length === 20);
+        }
+      } catch (err) {
+        console.error("Failed to search companies:", err);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [search, initialCompanies]);
 
   // Set TopBar details dynamically
   useEffect(() => {
@@ -245,6 +302,11 @@ export function ManageCompaniesClient({ companies }: ManageCompaniesClientProps)
         entityName="Company"
         onRowClick={handleRowClick}
         renderCard={renderCompanyCard}
+        searchQuery={search}
+        onSearchChange={setSearch}
+        onLoadMore={loadMore}
+        hasMore={hasMore}
+        isLoadingMore={loading}
       />
     </div>
   );
