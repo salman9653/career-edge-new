@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor } from "lucide-react";
+import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor, Video } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/store/useUIStore";
 import { User as UserType } from "@/types";
@@ -71,11 +71,18 @@ export function MoreClient({ user }: MoreClientProps) {
             colorClass: "bg-blue-500/10 text-blue-500 border-blue-500/20"
           },
           {
-            title: "Templates",
-            description: "Evaluation templates",
+            title: "Assessments",
+            description: "Assessment templates",
             icon: FileText,
-            path: "/dashboard/templates",
+            path: "/dashboard/templates/assessments",
             colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/20"
+          },
+          {
+            title: "AI-Interview",
+            description: "AI Interview templates",
+            icon: Video,
+            path: "/dashboard/templates/ai-interview",
+            colorClass: "bg-purple-500/10 text-purple-500 border-purple-500/20"
           },
           {
             title: "Question Bank",

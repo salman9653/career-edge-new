@@ -9,6 +9,7 @@ import { Tooltip } from "@/components/ui";
 import { useUIStore } from "@/store/useUIStore";
 import { cn } from "@/lib/utils";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { TabItem } from "./data-table";
 
 interface DataTableToolbarProps {
   searchQuery: string;
@@ -33,6 +34,7 @@ interface DataTableToolbarProps {
   sortOrder?: "asc" | "desc";
   onSort?: (key: string) => void;
   onDeleteSelected?: () => void;
+  tabs?: TabItem[];
 }
 
 export function DataTableToolbar({
@@ -54,6 +56,7 @@ export function DataTableToolbar({
   sortOrder = "asc",
   onSort,
   onDeleteSelected,
+  tabs,
 }: DataTableToolbarProps) {
   const router = useRouter();
   const { headerTitle, headerBackHref, showViewSwitcher, setViewMode } = useUIStore();
@@ -299,10 +302,29 @@ export function DataTableToolbar({
               <ArrowLeft className="w-4.5 h-4.5" />
             </Button>
           )}
-          {capitalizedTitle && (
-            <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
-              {capitalizedTitle}
-            </h1>
+          {tabs && tabs.length > 0 ? (
+            <div className="flex items-center bg-neutral-100 dark:bg-neutral-900 border border-neutral-200/50 dark:border-neutral-800/50 p-1 rounded-xl gap-1 flex-shrink-0 h-10 sm:h-11">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={tab.onClick}
+                  className={cn(
+                    "px-4 h-8 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer text-xs font-bold whitespace-nowrap",
+                    tab.isActive
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            capitalizedTitle && (
+              <h1 className="text-lg md:text-xl font-extrabold tracking-tight text-foreground whitespace-nowrap">
+                {capitalizedTitle}
+              </h1>
+            )
           )}
         </div>
 

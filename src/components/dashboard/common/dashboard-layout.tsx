@@ -33,7 +33,9 @@ export function DashboardLayout({
   const { headerTitle, headerBackHref } = useUIStore();
 
   const tableModules = ["questions", "candidates", "manage-companies", "ats", "crm", "jobs", "templates", "applications", "practice"];
-  const isTableListingPage = tableModules.includes(activeModule) && pathname === `/dashboard/${activeModule}`;
+  const isTableListingPage = 
+    (tableModules.includes(activeModule) && pathname === `/dashboard/${activeModule}`) ||
+    (activeModule === "templates" && (pathname === "/dashboard/templates/assessments" || pathname === "/dashboard/templates/ai-interview"));
 
   // Resolve Header Title on top area
   const getHeaderTitle = () => {
@@ -75,7 +77,7 @@ export function DashboardLayout({
   const listRef = useRef<HTMLDivElement>(null);
   const isSpecialPath = pathname === "/dashboard/chat" || pathname === "/dashboard/notifications" || pathname === "/dashboard/more" || pathname === "/dashboard/settings";
 
-  const isActiveDashboard = pathname.startsWith("/dashboard") && !isSpecialPath;
+  const isActiveDashboard = pathname === "/dashboard";
 
   // Add global keyboard shortcut for search
   useEffect(() => {

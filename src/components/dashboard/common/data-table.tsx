@@ -10,6 +10,13 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useUIStore } from "@/store/useUIStore";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
+export interface TabItem {
+  id: string;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
 export interface ColumnDef<T> {
   key: string;
   label: string;
@@ -39,6 +46,7 @@ interface DataTableProps<T> {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  tabs?: TabItem[];
 }
 
 const DEFAULT_OPTIONS: Record<string, string[]> = {
@@ -62,6 +70,7 @@ export function DataTable<T extends Record<string, any>>({
   onLoadMore,
   hasMore = false,
   isLoadingMore = false,
+  tabs,
 }: DataTableProps<T>) {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const { viewMode } = useUIStore();
@@ -253,6 +262,7 @@ export function DataTable<T extends Record<string, any>>({
         sortOrder={sortOrder}
         onSort={handleSort}
         onDeleteSelected={onDeleteSelected ? handleDeleteSelected : undefined}
+        tabs={tabs}
       />
       {activeViewMode === "list" ? (
         <DataTableContent
