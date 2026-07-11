@@ -310,14 +310,29 @@ export async function getCompanyQuestions(companyId: string, searchQuery = "", s
     const client = await clientPromise;
     const db = client.db();
     
-    const query: Record<string, any> = { companyId };
+    // Query both old schema (companyId string) and new schema (companyIds array)
+    const baseQuery: Record<string, any> = {
+      $or: [
+        { companyId: companyId },
+        { companyIds: companyId }
+      ]
+    };
+    
+    let query = baseQuery;
     
     if (searchQuery.trim()) {
       const regex = new RegExp(searchQuery, "i");
-      query.$or = [
-        { question: { $regex: regex } },
-        { categories: { $regex: regex } }
-      ];
+      query = {
+        $and: [
+          baseQuery,
+          {
+            $or: [
+              { question: { $regex: regex } },
+              { categories: { $regex: regex } }
+            ]
+          }
+        ]
+      } as any;
     }
     
     // Find questions for this company
@@ -372,6 +387,8 @@ export async function createQuestion(companyId: string, questionData: any) {
     const doc = {
       ...questionData,
       companyId,
+      companyIds: [companyId], // link to this company
+      isGlobal: false,         // manual custom questions are private by default
       createdByName: companyName,
       createdAt: now,
       updatedAt: now
@@ -397,22 +414,68 @@ export async function updateQuestion(questionId: string, companyId: string, ques
       return { success: false, error: "Invalid question ID" };
     }
     
-    const now = new Date();
-    const updates = {
-      ...questionData,
-      updatedAt: now
-    };
-    
-    const result = await db.collection("questions").updateOne(
-      { _id: new ObjectId(questionId), companyId },
-      { $set: updates }
-    );
-    
-    if (result.matchedCount === 0) {
-      return { success: false, error: "Question not found or unauthorized" };
+    const objId = new ObjectId(questionId);
+    const existing = await db.collection("questions").findOne({ _id: objId });
+    if (!existing) {
+      return { success: false, error: "Question not found" };
     }
     
-    return { success: true };
+    // Check if company has access via creator or link array
+    const hasAccess = existing.companyId === companyId || (existing.companyIds && existing.companyIds.includes(companyId));
+    if (!hasAccess) {
+      return { success: false, error: "Unauthorized" };
+    }
+    
+    const now = new Date();
+    
+    // Check if the question is shared (isGlobal === true OR used by other companies)
+    const isShared = existing.isGlobal === true || (existing.companyIds && existing.companyIds.length > 1);
+    
+    if (isShared) {
+      // Copy-On-Write (COW): Duplicate the question as a private custom question for this company
+      const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+      const companyName = profile?.companyName || "Test Company";
+      
+      const newDoc = {
+        ...existing,
+        ...questionData,
+        _id: new ObjectId(), // assign a new ID
+        companyId, // creator is this company
+        companyIds: [companyId], // private to this company
+        isGlobal: false, // not global anymore
+        createdByName: companyName,
+        createdAt: existing.createdAt || now,
+        updatedAt: now
+      };
+      
+      // 1. Insert the cloned custom question
+      await db.collection("questions").insertOne(newDoc);
+      
+      // 2. Remove this company's ID from the original shared question's companyIds list
+      await db.collection("questions").updateOne(
+        { _id: objId },
+        { $pull: { companyIds: companyId } } as any
+      );
+      
+      return { success: true, clonedId: newDoc._id.toString() };
+    } else {
+      // In-place update (since it is exclusive to this company)
+      const updates = {
+        ...questionData,
+        updatedAt: now
+      };
+      
+      const result = await db.collection("questions").updateOne(
+        { _id: objId },
+        { $set: updates }
+      );
+      
+      if (result.matchedCount === 0) {
+        return { success: false, error: "Failed to update question" };
+      }
+      
+      return { success: true };
+    }
   } catch (err) {
     console.error("Failed to update question in DAL:", err);
     return { success: false, error: err instanceof Error ? err.message : "Database error" };
@@ -428,19 +491,317 @@ export async function deleteQuestion(questionId: string, companyId: string) {
       return { success: false, error: "Invalid question ID" };
     }
     
-    const result = await db.collection("questions").deleteOne({
-      _id: new ObjectId(questionId),
-      companyId
-    });
-    
-    if (result.deletedCount === 0) {
-      return { success: false, error: "Question not found or unauthorized" };
+    const objId = new ObjectId(questionId);
+    const existing = await db.collection("questions").findOne({ _id: objId });
+    if (!existing) {
+      return { success: false, error: "Question not found" };
     }
     
-    return { success: true };
+    // Check if company has access
+    const hasAccess = existing.companyId === companyId || (existing.companyIds && existing.companyIds.includes(companyId));
+    if (!hasAccess) {
+      return { success: false, error: "Unauthorized" };
+    }
+    
+    // Check if shared
+    const isShared = existing.isGlobal === true || (existing.companyIds && existing.companyIds.length > 1);
+    
+    if (isShared) {
+      // Just unlink this company by pulling its ID
+      await db.collection("questions").updateOne(
+        { _id: objId },
+        { $pull: { companyIds: companyId } } as any
+      );
+      return { success: true };
+    } else {
+      // Delete the question from DB as it is private to this company
+      const result = await db.collection("questions").deleteOne({ _id: objId });
+      if (result.deletedCount === 0) {
+        return { success: false, error: "Question not found" };
+      }
+      return { success: true };
+    }
   } catch (err) {
     console.error("Failed to delete question in DAL:", err);
     return { success: false, error: err instanceof Error ? err.message : "Database error" };
+  }
+}
+
+// =========================================================================
+// MONETIZATION & TOKEN MANAGEMENT DAL HELPERS
+// =========================================================================
+
+// Default plans config fallback in case DB is not seeded yet
+const DEFAULT_PLANS_FALLBACK = {
+  "company-free": { monthlyTokens: 15, activeJobsLimit: 2, activeAssessmentsLimit: 2 },
+  "company-pro": { monthlyTokens: 250, activeJobsLimit: 20, activeAssessmentsLimit: 10 },
+  "company-pro-plus": { monthlyTokens: 1000, activeJobsLimit: 50, activeAssessmentsLimit: 9999 }
+};
+
+/**
+ * Check if the company has active tokens remaining.
+ */
+export async function getCompanyTokenBalance(companyId: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    if (!profile) return { allocated: 0, purchased: 0, total: 0 };
+    
+    return profile.aiTokens || { allocated: 0, purchased: 0, total: 0 };
+  } catch (err) {
+    console.error("Failed to get company token balance:", err);
+    return { allocated: 0, purchased: 0, total: 0 };
+  }
+}
+
+/**
+ * Verify if the company is allowed to perform an action based on their subscription limits.
+ */
+export async function verifyPlanLimit(
+  companyId: string,
+  limitType: "activeJobs" | "activeAssessments"
+): Promise<{ allowed: boolean; limit: number; current: number }> {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    // 1. Fetch company profile
+    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    const activePlan = profile?.activePlan || "company-free";
+    
+    // 2. Fetch plan config from pricing collection
+    let limit = 0;
+    const planConfig = await db.collection("pricing").findOne({ id: activePlan });
+    
+    if (planConfig) {
+      limit = limitType === "activeJobs" 
+        ? (planConfig.activeJobsLimit ?? 0) 
+        : (planConfig.activeAssessmentsLimit ?? 0);
+    } else {
+      // Fallback
+      const fb = DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK] || DEFAULT_PLANS_FALLBACK["company-free"];
+      limit = limitType === "activeJobs" ? fb.activeJobsLimit : fb.activeAssessmentsLimit;
+    }
+    
+    // 3. Count current items in DB
+    const collectionName = limitType === "activeJobs" ? "jobs" : "assessments";
+    const current = await db.collection(collectionName).countDocuments({ 
+      companyId 
+    });
+    
+    return {
+      allowed: current < limit,
+      limit,
+      current
+    };
+  } catch (err) {
+    console.error("Failed to verify plan limit in DAL:", err);
+    return { allowed: false, limit: 0, current: 0 };
+  }
+}
+
+/**
+ * Deduct AI tokens for an operation. Pulls from monthly allocated first, then purchased.
+ */
+export async function deductTokens(
+  companyId: string,
+  amount: number,
+  description: string
+): Promise<{ success: boolean; error?: string; newBalance?: number }> {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    // 1. Fetch profile
+    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    if (!profile) {
+      return { success: false, error: "Company profile not found" };
+    }
+    
+    // Ensure tokens schema is initialized
+    const aiTokens = profile.aiTokens || { allocated: 0, purchased: 0, total: 0, lastRefilledAt: new Date() };
+    
+    if (aiTokens.total < amount) {
+      return { success: false, error: `Insufficient tokens. Remaining: ${aiTokens.total}, Needed: ${amount}` };
+    }
+    
+    let allocatedDeduction = 0;
+    let purchasedDeduction = 0;
+    
+    if (aiTokens.allocated >= amount) {
+      allocatedDeduction = amount;
+    } else {
+      allocatedDeduction = aiTokens.allocated;
+      purchasedDeduction = amount - allocatedDeduction;
+    }
+    
+    const newAllocated = aiTokens.allocated - allocatedDeduction;
+    const newPurchased = aiTokens.purchased - purchasedDeduction;
+    const newTotal = newAllocated + newPurchased;
+    
+    // Update DB
+    await db.collection("company_profiles").updateOne(
+      { userId: companyId },
+      {
+        $set: {
+          "aiTokens.allocated": newAllocated,
+          "aiTokens.purchased": newPurchased,
+          "aiTokens.total": newTotal,
+          updatedAt: new Date()
+        }
+      }
+    );
+    
+    // Log transaction
+    await db.collection("token_transactions").insertOne({
+      companyId,
+      amount: -amount,
+      balanceAfter: newTotal,
+      type: "consume",
+      description,
+      createdAt: new Date()
+    });
+    
+    return {
+      success: true,
+      newBalance: newTotal
+    };
+  } catch (err) {
+    console.error("Failed to deduct tokens in DAL:", err);
+    return { success: false, error: "Database transaction failed" };
+  }
+}
+
+/**
+ * Lazy token refill. Resets monthly allocated tokens if 30 days have elapsed.
+ */
+export async function checkAndRefillTokens(companyId: string): Promise<void> {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    if (!profile) return;
+    
+    const activePlan = profile.activePlan || "company-free";
+    const now = new Date();
+    
+    // Initialize aiTokens if it doesn't exist
+    if (!profile.aiTokens) {
+      const planConfig = await db.collection("pricing").findOne({ id: activePlan });
+      const defaultAllocated = planConfig?.monthlyTokens ?? 
+        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || 15);
+        
+      await db.collection("company_profiles").updateOne(
+        { userId: companyId },
+        {
+          $set: {
+            activePlan,
+            aiTokens: {
+              allocated: defaultAllocated,
+              purchased: 0,
+              total: defaultAllocated,
+              lastRefilledAt: now
+            },
+            updatedAt: now
+          }
+        }
+      );
+      
+      // Log initial refill transaction
+      await db.collection("token_transactions").insertOne({
+        companyId,
+        amount: defaultAllocated,
+        balanceAfter: defaultAllocated,
+        type: "refill",
+        description: "Initial plan token allocation",
+        createdAt: now
+      });
+      return;
+    }
+    
+    // Check if 30 days have passed since last refill
+    const lastRefill = new Date(profile.aiTokens.lastRefilledAt);
+    const diffTime = Math.abs(now.getTime() - lastRefill.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays >= 30) {
+      const planConfig = await db.collection("pricing").findOne({ id: activePlan });
+      const maxAllocated = planConfig?.monthlyTokens ?? 
+        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || 15);
+      
+      const currentAllocated = profile.aiTokens.allocated;
+      const refilledAmount = maxAllocated - currentAllocated;
+      
+      if (refilledAmount > 0) {
+        const newAllocated = maxAllocated;
+        const newPurchased = profile.aiTokens.purchased;
+        const newTotal = newAllocated + newPurchased;
+        
+        await db.collection("company_profiles").updateOne(
+          { userId: companyId },
+          {
+            $set: {
+              "aiTokens.allocated": newAllocated,
+              "aiTokens.total": newTotal,
+              "aiTokens.lastRefilledAt": now,
+              updatedAt: now
+            }
+          }
+        );
+        
+        // Log refill transaction
+        await db.collection("token_transactions").insertOne({
+          companyId,
+          amount: refilledAmount,
+          balanceAfter: newTotal,
+          type: "refill",
+          description: "Monthly allocated tokens refill",
+          createdAt: now
+        });
+      } else {
+        // Just update timestamp if they already have full/excess tokens
+        await db.collection("company_profiles").updateOne(
+          { userId: companyId },
+          {
+            $set: {
+              "aiTokens.lastRefilledAt": now,
+              updatedAt: now
+            }
+          }
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Failed to check/refill tokens in DAL:", err);
+  }
+}
+
+/**
+ * Fetch token transactions for a company.
+ */
+export async function getCompanyTransactions(companyId: string, skip = 0, limit = 10) {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    
+    const transactions = await db.collection("token_transactions")
+      .find({ companyId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .toArray();
+      
+    const totalCount = await db.collection("token_transactions").countDocuments({ companyId });
+    
+    return {
+      transactions: JSON.parse(JSON.stringify(transactions)),
+      totalCount
+    };
+  } catch (err) {
+    console.error("Failed to get transactions in DAL:", err);
+    return { transactions: [], totalCount: 0 };
   }
 }
 

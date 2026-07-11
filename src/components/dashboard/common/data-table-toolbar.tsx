@@ -32,7 +32,7 @@ interface DataTableToolbarProps {
   sortableColumns?: { key: string; label: string }[];
   sortKey?: string | null;
   sortOrder?: "asc" | "desc";
-  onSort?: (key: string) => void;
+  onSort?: (key: string | null) => void;
   onDeleteSelected?: () => void;
   tabs?: TabItem[];
 }
@@ -216,8 +216,23 @@ export function DataTableToolbar({
               </Tooltip>
               {sortMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 bg-background/95 backdrop-blur-md">
-                  <div className="px-2.5 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    Sort By
+                  <div className="flex items-center justify-between px-2.5 py-1.5">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                      Sort By
+                    </span>
+                    {sortKey && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onSort) onSort(null);
+                          setSortMenuOpen(false);
+                        }}
+                        className="text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                        title="Clear Sorting"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                   <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-1" />
                   {sortableColumns.map((col) => {
@@ -368,8 +383,23 @@ export function DataTableToolbar({
                 </Tooltip>
                 {sortMenuOpen && (
                   <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-48 rounded-xl glass border border-neutral-200/50 dark:border-neutral-800/50 p-1.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-150 bg-background/95 backdrop-blur-md">
-                    <div className="px-2.5 py-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                      Sort By
+                    <div className="flex items-center justify-between px-2.5 py-1.5">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        Sort By
+                      </span>
+                      {sortKey && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSort) onSort(null);
+                            setSortMenuOpen(false);
+                          }}
+                          className="text-muted-foreground hover:text-foreground cursor-pointer rounded transition-colors"
+                          title="Clear Sorting"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                     <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-1" />
                     {sortableColumns.map((col) => {

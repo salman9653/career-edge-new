@@ -41,6 +41,7 @@ interface NavItem {
 
 interface SidebarProps {
   user: User
+  profile?: any
   activeModule: string
   onNavClick: (moduleId: string) => void
   onOnboardingOpen?: () => void
@@ -49,6 +50,7 @@ interface SidebarProps {
 
 export function Sidebar({
   user,
+  profile,
   activeModule,
   onNavClick,
   onOnboardingOpen,
@@ -95,7 +97,7 @@ export function Sidebar({
           { id: "dashboard", label: "Dashboard", icon: Home },
           { id: "manage-companies", label: "Manage Companies", icon: Building },
           { id: "candidates", label: "Manage Candidates", icon: Users },
-          { id: "app", label: "Manage App", icon: Settings }
+          { id: "manage-app", label: "Manage App", icon: Settings }
         ]
       case "company":
         return [
@@ -142,7 +144,7 @@ export function Sidebar({
       questions: "Question Bank",
       companies: "Manage Companies",
       candidates: "Manage Candidates",
-      app: "Manage App",
+      "manage-app": "Manage App",
       applications: "My Applications",
       practice: "Practice",
       notifications: "Notifications",
@@ -305,6 +307,7 @@ export function Sidebar({
           <div className="hidden sm:block">
             <SidebarFooter
               user={user}
+              profile={profile}
               isCollapsed={isCollapsed}
               onOnboardingOpen={onOnboardingOpen}
             />

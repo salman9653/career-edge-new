@@ -32,10 +32,19 @@ export async function generateQuestions(
   jobTitle: string,
   keySkills: string,
   difficulty: "Easy" | "Medium" | "Hard",
-  count: number
+  count: number,
+  avoidTexts?: string[]
 ): Promise<GeneratedQuestion[]> {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is missing. Please configure it in your environment.");
+  }
+
+  let avoidSection = "";
+  if (avoidTexts && avoidTexts.length > 0) {
+    // Only take the first 25 items to limit tokens, but this should be plenty.
+    const limitedAvoidTexts = avoidTexts.slice(0, 25);
+    avoidSection = `\n\nCRITICAL: Do NOT generate questions that are identical or highly similar to any of these existing questions:\n` +
+      limitedAvoidTexts.map((txt, i) => `${i + 1}. "${txt}"`).join("\n");
   }
 
   const prompt = `You are an expert technical interviewer. Generate a list of ${count} high-quality, realistic evaluation questions for candidate interviews.
@@ -50,7 +59,7 @@ export async function generateQuestions(
   1. The questions must test real-world scenarios, architectural designs, code understanding, or key concepts relevant to the skills: "${keySkills}".
   2. Each MCQ question must have between 2 and 6 options. Exactly one option must be correct.
   3. Ensure the question statements are clear, professional, and do not contain placeholders.
-  4. Formulate challenging distractors (incorrect options) that sound plausible.`;
+  4. Formulate challenging distractors (incorrect options) that sound plausible.${avoidSection}`;
 
   try {
     const response = await ai.models.generateContent({

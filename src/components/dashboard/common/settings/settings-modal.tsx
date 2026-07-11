@@ -1,5 +1,5 @@
 import { Dialog } from "@/components/ui/dialog";
-import { User, Palette, MessageSquare, Bell, Shield, HelpCircle } from "lucide-react";
+import { User, Palette, MessageSquare, Bell, Shield, HelpCircle, Coins } from "lucide-react";
 import { User as UserType } from "@/types";
 import { SettingsSidebar } from "./settings-sidebar";
 import { AccountSettings } from "./account-settings";
@@ -8,6 +8,7 @@ import { ChatSettings } from "./chat-settings";
 import { NotificationsSettings } from "./notifications-settings";
 import { SecuritySettings } from "./security-settings";
 import { HelpSettings } from "./help-settings";
+import { BillingSettings } from "./billing-settings";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ interface SettingsModalProps {
 const TABS = [
   { name: "Account", icon: User },
   { name: "Appearance", icon: Palette },
+  { name: "Plans & Billing", icon: Coins },
   { name: "Chat", icon: MessageSquare },
   { name: "Notifications", icon: Bell },
   { name: "Security", icon: Shield },
@@ -33,6 +35,11 @@ export function SettingsModal({
   activeTab,
   onTabChange,
 }: SettingsModalProps) {
+  const allowedTabs = TABS.filter(t => {
+    if (t.name === "Plans & Billing" && user?.accountType !== "company") return false;
+    return true;
+  });
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -42,7 +49,7 @@ export function SettingsModal({
       <div className="flex flex-row h-full w-full">
         {/* Sidebar Nav */}
         <SettingsSidebar
-          tabs={TABS}
+          tabs={allowedTabs}
           activeTab={activeTab}
           onTabChange={onTabChange}
         />
@@ -56,6 +63,10 @@ export function SettingsModal({
 
             {activeTab === "Appearance" && (
               <AppearanceSettings />
+            )}
+
+            {activeTab === "Plans & Billing" && (
+              <BillingSettings />
             )}
 
             {activeTab === "Chat" && (

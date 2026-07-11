@@ -37,7 +37,8 @@ interface DataTableProps<T> {
     row: T,
     isSelected: boolean,
     toggleSelect: (e: React.MouseEvent) => void,
-    selectMode: boolean
+    selectMode: boolean,
+    index?: number
   ) => React.ReactNode;
   onDeleteSelected?: (ids: string[]) => void | boolean | Promise<void | boolean>;
   // Server-side search & Lazy loading props
@@ -187,6 +188,12 @@ export function DataTable<T extends Record<string, any>>({
         const lowerVals = vals.map((v) => v.toLowerCase());
         result = result.filter((r) => {
           const val = r[key];
+          if (key === "createdByName") {
+            const isAI = val === "AI Generator";
+            const matchesAI = lowerVals.includes("ai") && isAI;
+            const matchesCustom = lowerVals.includes("custom") && !isAI;
+            return matchesAI || matchesCustom;
+          }
           if (val === undefined || val === null) return false;
           if (Array.isArray(val)) {
             return val.some((v) => lowerVals.includes(String(v).toLowerCase()));
@@ -196,10 +203,17 @@ export function DataTable<T extends Record<string, any>>({
       }
     });
     if (sortKey) {
+      const difficultyOrder: Record<string, number> = { easy: 1, medium: 2, hard: 3 };
       result.sort((a, b) => {
         const valA = a[sortKey]; const valB = b[sortKey];
         if (valA === undefined || valA === null) return 1;
         if (valB === undefined || valB === null) return -1;
+        if (sortKey === "difficulty") {
+          const orderA = difficultyOrder[String(valA).toLowerCase()] || 99;
+          const orderB = difficultyOrder[String(valB).toLowerCase()] || 99;
+          const comp = orderA - orderB;
+          return sortOrder === "asc" ? comp : -comp;
+        }
         const comp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: "base" });
         return sortOrder === "asc" ? comp : -comp;
       });
@@ -207,9 +221,16 @@ export function DataTable<T extends Record<string, any>>({
     return result;
   }, [data, searchQuery, searchKey, appliedFilters, sortKey, sortOrder]);
 
-  const handleSort = (key: string) => {
-    if (sortKey === key) setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortOrder("asc"); }
+  const handleSort = (key: string | null) => {
+    if (key === null) {
+      setSortKey(null);
+      setSortOrder("asc");
+    } else if (sortKey === key) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortOrder("asc");
+    }
   };
 
   const toggleSelectRow = (id: string, e: React.MouseEvent) => {

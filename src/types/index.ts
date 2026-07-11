@@ -70,6 +70,16 @@ export interface CompanyProfile {
   twitter?: string;
   facebook?: string;
   instagram?: string;
+  
+  // Monetization & AI Tokens
+  activePlan?: "company-free" | "company-pro" | "company-pro-plus";
+  planExpiresAt?: Date;
+  aiTokens?: {
+    allocated: number;
+    purchased: number;
+    total: number;
+    lastRefilledAt: Date;
+  };
 }
 
 export interface CompanyProfileFormData {

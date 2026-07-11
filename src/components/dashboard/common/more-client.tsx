@@ -108,7 +108,7 @@ export function MoreClient({ user }: MoreClientProps) {
             title: "Manage App",
             description: "Configure app preferences",
             icon: Settings,
-            path: "/dashboard/app",
+            path: "/dashboard/manage-app",
             colorClass: "bg-rose-500/10 text-rose-500 border-rose-500/20"
           }
         ];

@@ -89,6 +89,58 @@ const stepVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
+function getFriendlyErrorMessage(errStr: string | null): string {
+  if (!errStr) return "An unexpected error occurred during generation.";
+  
+  // Try to parse if it is JSON
+  try {
+    const parsed = JSON.parse(errStr);
+    
+    // Check for nested error structures like {"error": {"message": "..."}}
+    if (parsed.error && typeof parsed.error === "object") {
+      if (parsed.error.message) {
+        return getFriendlyErrorMessage(parsed.error.message);
+      }
+    }
+    
+    // Check for direct message keys
+    if (parsed.message) {
+      return getFriendlyErrorMessage(parsed.message);
+    }
+  } catch (e) {
+    // Not a JSON string, proceed to text matches
+  }
+
+  // Handle common API error patterns
+  const lowerStr = errStr.toLowerCase();
+  
+  if (lowerStr.includes("experiencing high demand") || lowerStr.includes("unavailable") || lowerStr.includes("503")) {
+    return "The AI service is temporarily unavailable due to high demand. Please try again in a few moments.";
+  }
+  
+  if (lowerStr.includes("rate limit") || lowerStr.includes("429") || lowerStr.includes("too many requests")) {
+    return "API rate limit exceeded. Please wait a few seconds and try again.";
+  }
+  
+  if (lowerStr.includes("quota exceeded") || lowerStr.includes("billing")) {
+    return "AI generation quota has been exceeded. Please check your developer API limits.";
+  }
+
+  if (lowerStr.includes("api key") || lowerStr.includes("invalid key") || lowerStr.includes("credentials")) {
+    return "Authentication with the AI service failed. Please check your API configuration.";
+  }
+
+  // If it's a raw JSON string that escaped parsing, clean it up manually
+  if (errStr.startsWith("{") && errStr.includes('"message":')) {
+    const match = errStr.match(/"message"\s*:\s*"([^"]+)"/);
+    if (match && match[1]) {
+      return getFriendlyErrorMessage(match[1]);
+    }
+  }
+
+  return errStr;
+}
+
 export function AIGenerationDialog({
   isOpen,
   onClose,
@@ -100,6 +152,26 @@ export function AIGenerationDialog({
 }: AIGenerationDialogProps) {
   const [step, setStep] = useState<DialogStep>("generating");
   const [error, setError] = useState<string | null>(null);
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
+  const handleRetry = () => {
+    setError(null);
+    setStep("generating");
+    setSmoothProgress(0);
+    setQuestions([]);
+    setApprovedIndices(new Set());
+    setReviewedIndices(new Set());
+    setCurrentIndex(0);
+    setSavePending(false);
+    setGenStatus([
+      { id: 1, label: "Analyzing job title & requirements...", status: "active" },
+      { id: 2, label: "Formulating skills assessment parameters...", status: "pending" },
+      { id: 3, label: "Generating technical evaluation questions...", status: "pending" },
+      { id: 4, label: "Validating question options & answers...", status: "pending" },
+      { id: 5, label: "Running database duplicate checks...", status: "pending" },
+    ]);
+    setRetryTrigger((prev) => prev + 1);
+  };
 
   // Generation status indicators
   const [genStatus, setGenStatus] = useState([
@@ -157,8 +229,7 @@ export function AIGenerationDialog({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Reset states is handled by React component remounting via key prop in parent.
-
+    const abortController = new AbortController();
 
     // Timer animations for step checklist to feel high-fidelity
     const timers: NodeJS.Timeout[] = [];
@@ -184,6 +255,7 @@ export function AIGenerationDialog({
     // Trigger API call immediately
     const fetchAIQuestions = async () => {
       try {
+        setError(null);
         const res = await fetch("/api/questions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -194,6 +266,7 @@ export function AIGenerationDialog({
             difficulty,
             count,
           }),
+          signal: abortController.signal,
         });
 
         if (!res.ok) {
@@ -203,6 +276,8 @@ export function AIGenerationDialog({
 
         const data = await res.json();
         const generatedList = data.questions as GeneratedQuestion[];
+
+        if (abortController.signal.aborted) return;
 
         if (generatedList.length === 0) {
           throw new Error("No unique questions could be generated. Try specifying different skills.");
@@ -215,7 +290,13 @@ export function AIGenerationDialog({
           return s;
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 800);
+          abortController.signal.addEventListener("abort", () => {
+            clearTimeout(t);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
 
         setGenStatus(prev => prev.map(s => {
           if (s.id === 4) return { ...s, status: "done" };
@@ -223,16 +304,37 @@ export function AIGenerationDialog({
           return s;
         }));
 
-        await new Promise(resolve => setTimeout(resolve, 600));
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 600);
+          abortController.signal.addEventListener("abort", () => {
+            clearTimeout(t);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+
+        if (abortController.signal.aborted) return;
 
         setGenStatus(prev => prev.map(s => ({ ...s, status: "done" })));
         setQuestions(generatedList);
+        setError(null);
         
         // Wait a brief moment to let user see final checks before transitioning
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 500);
+          abortController.signal.addEventListener("abort", () => {
+            clearTimeout(t);
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        });
+
+        if (abortController.signal.aborted) return;
         setStep("success-summary");
 
       } catch (err: unknown) {
+        if (err instanceof Error && (err.name === "AbortError" || err.message === "Aborted")) {
+          console.log("Fetch aborted cleanly");
+          return;
+        }
         const errMsg = err instanceof Error ? err.message : "An unexpected error occurred during generation.";
         setError(errMsg);
       }
@@ -242,8 +344,9 @@ export function AIGenerationDialog({
 
     return () => {
       timers.forEach(clearTimeout);
+      abortController.abort();
     };
-  }, [isOpen, jobTitle, keySkills, difficulty, count]);
+  }, [isOpen, jobTitle, keySkills, difficulty, count, retryTrigger]);
 
   // Action: Add all immediately
   const handleAddAll = async () => {
@@ -397,13 +500,13 @@ export function AIGenerationDialog({
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/70 backdrop-blur-md cursor-default"
-        onClick={step !== "generating" && !savePending ? onClose : undefined}
       />
 
       {/* Main Dialog Panel Wrapper (for rotating border) */}
       <div 
         className={cn(
           "relative w-full max-w-lg lg:w-[33.33vw] lg:max-w-none rounded-[28px] shadow-2xl overflow-hidden transition-all duration-300 z-10",
+          step === "reviewing" ? "h-full md:h-auto" : "h-auto",
           step === "generating" ? "p-[2.5px] bg-neutral-900/50" : "border border-neutral-200/30 dark:border-neutral-800/80 p-0"
         )}
       >
@@ -417,8 +520,10 @@ export function AIGenerationDialog({
         {/* Inner Dialog Panel */}
         <div 
           className={cn(
-            "w-full bg-card flex flex-col focus:outline-none text-left min-h-[480px] lg:min-h-[50vh] lg:h-[50vh] transition-all duration-300 relative z-20",
-            step === "generating" ? "rounded-[25.5px] p-[21.5px] sm:p-[29.5px]" : "rounded-[28px] p-6 sm:p-8"
+            "w-full bg-card flex flex-col focus:outline-none text-left transition-all duration-300 relative z-20",
+            step === "generating" ? "rounded-[25.5px] p-[21.5px] sm:p-[29.5px] h-auto min-h-[380px]" : 
+            step === "reviewing" ? "rounded-[28px] p-6 sm:p-8 h-full md:h-[70vh] md:min-h-[580px] md:max-h-[90vh]" :
+            "rounded-[28px] p-6 sm:p-8 h-auto min-h-[480px]"
           )}
         >
           {/* Soft background sparkles */}
@@ -481,7 +586,7 @@ export function AIGenerationDialog({
             )}
 
             {/* ERROR STATE */}
-            {error && (
+            {error && step === "generating" && (
               <motion.div
                 key="error"
                 initial={{ opacity: 0, y: 10 }}
@@ -494,14 +599,24 @@ export function AIGenerationDialog({
                 </div>
                 <h3 className="text-base font-extrabold text-foreground mb-2">Generation Failed</h3>
                 <p className="text-xs text-muted-foreground max-w-sm leading-relaxed mb-6">
-                  {error}
+                  {getFriendlyErrorMessage(error)}
                 </p>
-                <Button
-                  onClick={onClose}
-                  className="bg-primary text-white font-bold text-xs h-9.5 px-5 rounded-xl cursor-pointer"
-                >
-                  Close Dialog
-                </Button>
+                <div className="flex gap-3 justify-center w-full max-w-[280px]">
+                  <Button
+                    onClick={onClose}
+                    variant="outline"
+                    className="font-bold text-xs h-9.5 px-5 rounded-xl cursor-pointer flex-1"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={handleRetry}
+                    variant="default"
+                    className="font-bold text-xs h-9.5 px-5 rounded-xl cursor-pointer flex-1"
+                  >
+                    Retry
+                  </Button>
+                </div>
               </motion.div>
             )}
 
@@ -558,7 +673,7 @@ export function AIGenerationDialog({
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: "-100%", opacity: 0 }}
                 transition={{ type: "tween", duration: 0.35, ease: "easeInOut" }}
-                className="w-full flex-1 flex flex-col justify-between min-h-[420px]"
+                className="w-full flex-1 flex flex-col h-full justify-between min-h-0"
               >
                 {/* Top Header */}
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -593,7 +708,7 @@ export function AIGenerationDialog({
                 </div>
 
                 {/* The Curation Card */}
-                <div className="flex-1 relative overflow-hidden mb-5">
+                <div className="flex-1 min-h-0 relative overflow-hidden mb-5">
                   <AnimatePresence mode="popLayout" custom={{ direction: transitionDirection }}>
                     <motion.div
                       key={currentIndex}
@@ -603,8 +718,19 @@ export function AIGenerationDialog({
                       animate="center"
                       exit="exit"
                       transition={{ type: "tween", duration: 0.28, ease: "easeOut" }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.6}
+                      onDragEnd={(_e, info) => {
+                        const swipeThreshold = 80;
+                        if (info.offset.x < -swipeThreshold) {
+                          handleNextCardArrow();
+                        } else if (info.offset.x > swipeThreshold) {
+                          handlePrevCard();
+                        }
+                      }}
                       className={cn(
-                        "w-full h-full flex flex-col gap-4 text-left border rounded-2xl p-5 bg-card transition-all duration-300 shadow-md relative",
+                        "w-full h-full flex flex-col gap-4 text-left border rounded-2xl p-0 bg-card transition-all duration-300 shadow-md relative overflow-hidden cursor-grab active:cursor-grabbing select-none touch-pan-y",
                         animateFlash === "approve" ? "animate-approve-flash border-emerald-500" :
                         animateFlash === "reject" ? "animate-reject-flash border-red-500" :
                         approvedIndices.has(currentIndex)
@@ -631,7 +757,7 @@ export function AIGenerationDialog({
                       )}
 
                       {/* Scrollable inner content area to prevent vertical jumps */}
-                      <div className="flex-1 overflow-y-auto flex flex-col gap-4 pr-1">
+                      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 p-5 pr-4">
                         {/* Meta Badge Indicators */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold border text-primary border-primary/10 bg-primary/5">

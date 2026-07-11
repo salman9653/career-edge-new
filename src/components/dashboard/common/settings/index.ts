@@ -9,4 +9,5 @@ export { SecuritySettings } from "./security-settings";
 export { ChangePassword } from "./change-password";
 export { TwoFactorAuth } from "./two-factor-auth";
 export { HelpSettings } from "./help-settings";
+export { BillingSettings } from "./billing-settings";
 

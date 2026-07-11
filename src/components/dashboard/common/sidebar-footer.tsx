@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Bell, MessageSquare, Sparkles, Sun, Moon, Monitor } from "lucide-react"
+import { Bell, MessageSquare, Sparkles, Sun, Moon, Monitor, Coins, ArrowRight } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import { useClickOutside } from "@/hooks/useClickOutside"
@@ -16,6 +16,7 @@ import { Tooltip } from "@/components/ui"
 
 interface SidebarFooterProps {
   user: User
+  profile?: any
   isCollapsed: boolean
   onOnboardingOpen?: () => void
 }
@@ -24,6 +25,7 @@ type ActivePopover = "none" | "notifications" | "chat" | "ai" | "profile"
 
 export function SidebarFooter({
   user,
+  profile,
   isCollapsed,
   onOnboardingOpen
 }: SidebarFooterProps) {
@@ -85,8 +87,76 @@ export function SidebarFooter({
     }
   }
 
+  const handleBillingNavigation = () => {
+    if (typeof window !== "undefined") {
+      const isDesktop = window.innerWidth >= 640;
+      if (isDesktop) {
+        router.push(`${window.location.pathname}?settings=true&tab=Plans %26 Billing`);
+      } else {
+        router.push("/dashboard/settings");
+      }
+    }
+  };
+
+  // Token Credits variables
+  const isCompany = user?.accountType === "company";
+  const activePlan = profile?.activePlan || "company-free";
+  const aiTokens = profile?.aiTokens || { allocated: 15, purchased: 0, total: 15 };
+  const allocated = aiTokens.allocated ?? 15;
+  const totalTokens = aiTokens.total ?? 15;
+  const maxTokens = activePlan === "company-pro-plus" ? 1000 : (activePlan === "company-pro" ? 250 : 15);
+  const percentage = Math.min(100, Math.max(0, (allocated / maxTokens) * 100));
+  const planLabel = activePlan === "company-pro-plus" ? "Pro+" : (activePlan === "company-pro" ? "Pro" : "Free");
+  const isFree = activePlan === "company-free";
+
   return (
     <div className="p-4 border-t border-neutral-200/30 dark:border-neutral-800/30 space-y-4 bg-neutral-50/20 dark:bg-neutral-950/10">
+      
+      {/* Company Token Progress Widget */}
+      {isCompany && (
+        <div className="w-full">
+          {isCollapsed ? (
+            <div className="flex justify-center">
+              <Tooltip content={`AI Credits: ${allocated}/${maxTokens} (${planLabel} Plan)`} side="right">
+                <button
+                  onClick={handleBillingNavigation}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-ai-gradient text-white shadow-md border-0 cursor-pointer hover:scale-105 transition-transform"
+                >
+                  <Coins className="w-5 h-5" />
+                </button>
+              </Tooltip>
+            </div>
+          ) : (
+            <div className="bg-card rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40 p-4 space-y-3 relative overflow-hidden shadow-sm text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" /> AI Credits
+                </span>
+                <span className="text-xs font-black text-foreground">{allocated} / {maxTokens}</span>
+              </div>
+              
+              <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-ai-gradient transition-all duration-500" 
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] text-muted-foreground font-semibold uppercase">{planLabel} Plan</span>
+                {isFree && (
+                  <button
+                    onClick={handleBillingNavigation}
+                    className="text-[9px] font-black text-primary hover:underline cursor-pointer border-0 bg-transparent flex items-center gap-0.5"
+                  >
+                    Upgrade <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Action Row: Theme, Notifications, Chat, AI Chat with custom hover tooltips */}
       <div className={cn("flex items-center gap-2", isCollapsed ? "flex-col" : "justify-between")}>

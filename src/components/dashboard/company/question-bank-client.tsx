@@ -128,6 +128,11 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
         label: "Status",
         options: ["Active", "Inactive"],
       },
+      {
+        key: "createdByName",
+        label: "Source",
+        options: ["AI", "Custom"],
+      },
     ];
   }, [questions]);
 
@@ -183,7 +188,6 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
     {
       key: "type",
       label: "Type",
-      sortable: true,
       render: (row) => <span className="text-xs font-medium text-muted-foreground">{row.type}</span>,
     },
     {
@@ -231,6 +235,22 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
       },
     },
     {
+      key: "createdByName",
+      label: "Source",
+      render: (row) => {
+        const isAI = row.createdByName === "AI Generator";
+        return isAI ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-pink-500 bg-pink-500/5 border border-pink-500/10 px-2 py-0.5 rounded">
+            <Sparkles className="w-2.5 h-2.5" /> AI
+          </span>
+        ) : (
+          <span className="inline-flex items-center text-[10px] font-bold text-neutral-500 bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 px-2 py-0.5 rounded">
+            Custom
+          </span>
+        );
+      },
+    },
+    {
       key: "status",
       label: "Status",
       render: (row) => {
@@ -269,7 +289,8 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
     row: QuestionRow,
     isSelected: boolean,
     toggleSelect: (e: React.MouseEvent) => void,
-    selectMode: boolean
+    selectMode: boolean,
+    index?: number
   ) => {
     const diff = row.difficulty;
     const diffColor =
@@ -304,12 +325,20 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
 
         {/* Card Header (Type & Difficulty) */}
         <div className="flex items-center justify-between gap-2 pr-6">
-          <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-            {row.type} Question
+          <span className="text-xs font-extrabold text-foreground tracking-wide">
+            Question #{(index ?? 0) + 1}
           </span>
-          <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold border", diffColor)}>
-            {diff}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {row.createdByName === "AI Generator" && (
+              <Sparkles className="w-3.5 h-3.5 shrink-0 animate-pulse" style={{ stroke: "url(#ai-grad)" }} />
+            )}
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+              {row.type}
+            </span>
+            <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold border", diffColor)}>
+              {diff}
+            </span>
+          </div>
         </div>
 
         {/* Question Statement */}
@@ -336,7 +365,9 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
 
         {/* Footer Details */}
         <div className="mt-auto pt-2 text-[10px] text-muted-foreground flex justify-between items-center border-t border-neutral-100/50 dark:border-neutral-900/50">
-          <span className="truncate max-w-[120px]">{row.createdByName}</span>
+          <span className="truncate max-w-[120px] font-medium">
+            {row.createdByName === "AI Generator" ? "AI Generated" : "Custom"}
+          </span>
           <span>
             {new Date(row.createdAt).toLocaleDateString("en-GB", {
               day: "2-digit",
@@ -360,6 +391,15 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
 
   return (
     <div className="w-full h-[calc(100vh-88px)] md:h-[calc(100vh-48px)] flex flex-col overflow-hidden -mb-[24px] md:-mb-[32px] relative">
+      <svg width="0" height="0" className="absolute pointer-events-none" aria-hidden="true">
+        <defs>
+          <linearGradient id="ai-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#a855f7" />
+            <stop offset="50%" stopColor="#ec4899" />
+            <stop offset="100%" stopColor="#f43f5e" />
+          </linearGradient>
+        </defs>
+      </svg>
       {questions.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto h-full">
           <motion.div
@@ -383,7 +423,18 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
               Your question bank is currently empty. Get started by adding a custom question or using our AI Generator to template realistic technical questions in seconds.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
+            {/* Desktop: Single Button to Add/Generate page */}
+            <div className="hidden lg:flex w-full">
+              <Button
+                onClick={() => router.push("/dashboard/questions/add")}
+                className="bg-primary text-white font-bold h-10 px-6 rounded-xl hover:bg-primary/95 cursor-pointer shadow-md text-xs w-full flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Question
+              </Button>
+            </div>
+
+            {/* Mobile/Tablet: Separate Buttons */}
+            <div className="flex lg:hidden flex-col sm:flex-row gap-3 w-full">
               <Button
                 onClick={() => router.push("/dashboard/questions/add")}
                 className="bg-primary text-white font-bold h-10 px-5 rounded-xl hover:bg-primary/95 cursor-pointer shadow-md text-xs flex-1"
@@ -392,9 +443,9 @@ export function QuestionBankClient({ questions: initialQuestions, children }: Qu
               </Button>
               <Button
                 onClick={() => router.push("/dashboard/questions/generate")}
-                className="border border-neutral-200 dark:border-neutral-800 text-foreground font-bold h-10 px-5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex items-center justify-center gap-1.5 text-xs flex-1"
+                className="bg-ai-gradient text-white font-bold h-10 px-5 rounded-xl hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5 text-xs flex-1 border-0 shadow-md transition-all"
               >
-                <Sparkles className="w-3.5 h-3.5 text-pink-500" /> Generate with AI
+                <Sparkles className="w-3.5 h-3.5 text-white" /> Generate with AI
               </Button>
             </div>
           </motion.div>

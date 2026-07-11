@@ -45,7 +45,7 @@ export function DashboardLayoutClient({ children, user, profile }: DashboardLayo
   };
 
   const handleTabChange = (tabName: string) => {
-    router.push(`${pathname}?settings=true&tab=${tabName}`);
+    router.push(`${pathname}?settings=true&tab=${encodeURIComponent(tabName)}`);
   };
 
   const handleCloseSettings = () => {

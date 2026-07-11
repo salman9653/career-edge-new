@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ArrowLeft,
   LucideIcon,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/useUIStore";
@@ -22,6 +23,7 @@ import { ChatSettings } from "./chat-settings";
 import { NotificationsSettings } from "./notifications-settings";
 import { SecuritySettings } from "./security-settings";
 import { HelpSettings } from "./help-settings";
+import { BillingSettings } from "./billing-settings";
 import { User as UserType } from "@/types";
 
 interface Section {
@@ -49,6 +51,14 @@ const SECTIONS: Section[] = [
     icon: Palette,
     color: "text-purple-500",
     iconBg: "bg-purple-500/10 border-purple-500/20",
+  },
+  {
+    id: "Billing",
+    name: "Plans & Billing",
+    description: "Manage subscription limits and AI tokens",
+    icon: Coins,
+    color: "text-indigo-500",
+    iconBg: "bg-indigo-500/10 border-indigo-500/20",
   },
   {
     id: "Chat",
@@ -141,6 +151,8 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
         );
       case "Appearance":
         return <AppearanceSettings />;
+      case "Billing":
+        return <BillingSettings />;
       case "Chat":
         return <ChatSettings />;
       case "Notifications":
@@ -155,6 +167,10 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
   };
 
   const activeInfo = SECTIONS.find((s) => s.id === activeSection);
+  const allowedSections = SECTIONS.filter(s => {
+    if (s.id === "Billing" && user?.accountType !== "company") return false;
+    return true;
+  });
 
   return (
     <div className="w-full max-w-md mx-auto overflow-hidden relative" style={{ minHeight: "calc(100vh - 130px)" }}>
@@ -172,7 +188,7 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             <p className="text-[10px] uppercase font-extrabold text-muted-foreground tracking-wider pl-1 mb-4">
               Preferences
             </p>
-            {SECTIONS.map((section) => {
+            {allowedSections.map((section) => {
               const Icon = section.icon;
               return (
                 <button

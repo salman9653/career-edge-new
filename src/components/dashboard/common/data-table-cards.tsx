@@ -16,7 +16,8 @@ interface DataTableCardsProps<T> {
     row: T,
     isSelected: boolean,
     toggleSelect: (e: React.MouseEvent) => void,
-    selectMode: boolean
+    selectMode: boolean,
+    index?: number
   ) => React.ReactNode;
   loaderRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -56,7 +57,7 @@ export function DataTableCards<T extends Record<string, any>>({
                   onClick={handleClick}
                   className={cn(onRowClick && "cursor-pointer")}
                 >
-                  {renderCard(row, isSelected, toggleSelect, selectMode)}
+                  {renderCard(row, isSelected, toggleSelect, selectMode, rIndex)}
                 </div>
               );
             }

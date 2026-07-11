@@ -27,6 +27,12 @@ export default async function DashboardPage() {
     const client = await clientPromise;
     const db = client.db();
     const collectionName = user.accountType === "company" ? "company_profiles" : "candidate_profiles";
+    
+    if (user.accountType === "company") {
+      const { checkAndRefillTokens } = await import("@/lib/dal");
+      await checkAndRefillTokens(user.id);
+    }
+    
     profile = await db.collection(collectionName).findOne({ userId: user.id });
     if (profile) {
       profile = JSON.parse(JSON.stringify(profile));
