@@ -11,5 +11,11 @@ export default async function MorePage() {
     redirect("/signin");
   }
 
-  return <MoreClient user={user as User} />;
+  let profile = null;
+  if (user.accountType === "company") {
+    const { getProfile } = await import("@/lib/dal");
+    profile = await getProfile(user.id, user.accountType);
+  }
+
+  return <MoreClient user={user as User} profile={profile} />;
 }

@@ -168,7 +168,7 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
 
   const activeInfo = SECTIONS.find((s) => s.id === activeSection);
   const allowedSections = SECTIONS.filter(s => {
-    if (s.id === "Billing" && user?.accountType !== "company") return false;
+    if (s.id === "Billing" && user?.accountType !== "company" && user?.accountType !== "candidate") return false;
     return true;
   });
 

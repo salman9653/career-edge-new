@@ -36,7 +36,7 @@ export function SettingsModal({
   onTabChange,
 }: SettingsModalProps) {
   const allowedTabs = TABS.filter(t => {
-    if (t.name === "Plans & Billing" && user?.accountType !== "company") return false;
+    if (t.name === "Plans & Billing" && user?.accountType !== "company" && user?.accountType !== "candidate") return false;
     return true;
   });
 

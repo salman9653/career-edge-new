@@ -3,18 +3,20 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor, Video } from "lucide-react";
+import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor, Video, Sparkles, ArrowRight } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/store/useUIStore";
 import { User as UserType } from "@/types";
 import { cn } from "@/lib/utils";
 import { useThemeSync } from "@/hooks/useThemeSync";
+import { CreditBalanceCard } from "./credit-balance-card";
 
 interface MoreClientProps {
   user: UserType;
+  profile?: any;
 }
 
-export function MoreClient({ user }: MoreClientProps) {
+export function MoreClient({ user, profile }: MoreClientProps) {
   const router = useRouter();
   const { theme, setTheme } = useThemeSync();
   const [mounted, setMounted] = React.useState(false);
@@ -145,6 +147,11 @@ export function MoreClient({ user }: MoreClientProps) {
           </span>
         </div>
       </div>
+
+      {/* Token Progress Widget */}
+      {(user?.accountType === "company" || user?.accountType === "candidate") && (
+        <CreditBalanceCard user={user} profile={profile} />
+      )}
 
       {/* Remaining Modules Grid */}
       {remainingModules.length > 0 && (

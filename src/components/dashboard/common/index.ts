@@ -16,5 +16,6 @@ export { DataTableCards } from "./data-table-cards";
 export { UserProfileClient } from "./user-profile-client";
 export { EditProfileClient } from "./edit-profile-client";
 export { MoreClient } from "./more-client";
+export { CreditBalanceCard } from "./credit-balance-card";
 
 

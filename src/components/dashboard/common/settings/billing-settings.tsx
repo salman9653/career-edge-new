@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 
 interface PricingItem {
   id: string;
@@ -43,6 +44,9 @@ export function BillingSettings() {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+  const isCompany = user?.accountType === "company";
   const [loadingPricing, setLoadingPricing] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [actionPending, startTransition] = useTransition();
@@ -77,7 +81,8 @@ export function BillingSettings() {
         if (res.ok) {
           const body = await res.json();
           const data: PricingItem[] = body.data || [];
-          setPlans(data.filter(p => p.type === "base-plan" && p.target === "company"));
+          const target = isCompany ? "company" : "candidate";
+          setPlans(data.filter(p => p.type === "base-plan" && p.target === target));
           setTokenPacks(data.filter(p => p.type === "ai-token-pack"));
         }
       } catch (err) {
@@ -98,7 +103,7 @@ export function BillingSettings() {
         const profileRes = await fetch("/api/profile");
         if (profileRes.ok) {
           const profileBody = await profileRes.json();
-          setProfile(profileBody.data);
+          setProfile(profileBody.profile || profileBody.data);
         }
 
         // Fetch transactions
@@ -221,18 +226,25 @@ export function BillingSettings() {
               </span>
             </div>
             
-            <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-muted-foreground">Active Jobs Limit:</span>
-                <p className="text-foreground font-black mt-0.5">{currentPlan.activeJobsLimit} Active Posts</p>
+            {isCompany ? (
+              <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Active Jobs Limit:</span>
+                  <p className="text-foreground font-black mt-0.5">{currentPlan.activeJobsLimit} Active Posts</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Assessments Limit:</span>
+                  <p className="text-foreground font-black mt-0.5">
+                    {currentPlan.activeAssessmentsLimit === 9999 ? "Unlimited" : `${currentPlan.activeAssessmentsLimit} Active`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Assessments Limit:</span>
-                <p className="text-foreground font-black mt-0.5">
-                  {currentPlan.activeAssessmentsLimit === 9999 ? "Unlimited" : `${currentPlan.activeAssessmentsLimit} Active`}
-                </p>
+            ) : (
+              <div className="mt-4 text-xs">
+                <span className="text-muted-foreground">Plan Benefits:</span>
+                <p className="text-foreground font-black mt-0.5">Full access to AI resume builder, career suggestions, and practice templates.</p>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -298,22 +310,35 @@ export function BillingSettings() {
                       <Check className="w-3.5 h-3.5 text-emerald-500" />
                       <span>{plan.monthlyTokens} AI Tokens / month</span>
                     </li>
-                    <li className="flex items-center gap-2 text-xs text-foreground font-bold">
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>{plan.activeJobsLimit} Active Jobs limit</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-xs text-foreground font-bold">
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>
-                        {plan.activeAssessmentsLimit === 9999 ? "Unlimited Assessments" : `${plan.activeAssessmentsLimit} Assessments limit`}
-                      </span>
-                    </li>
-                    {plan.features?.slice(3).map((feat, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <Check className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
+                    {isCompany ? (
+                      <>
+                        <li className="flex items-center gap-2 text-xs text-foreground font-bold">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{plan.activeJobsLimit} Active Jobs limit</span>
+                        </li>
+                        <li className="flex items-center gap-2 text-xs text-foreground font-bold">
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>
+                            {plan.activeAssessmentsLimit === 9999 ? "Unlimited Assessments" : `${plan.activeAssessmentsLimit} Assessments limit`}
+                          </span>
+                        </li>
+                        {plan.features?.slice(3).map((feat, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground font-semibold">
+                            <Check className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
+                            <span>{feat}</span>
+                          </li>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {plan.features?.map((feat, idx) => (
+                          <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground font-semibold">
+                            <Check className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
+                            <span>{feat}</span>
+                          </li>
+                        ))}
+                      </>
+                    )}
                   </ul>
                 </div>
 

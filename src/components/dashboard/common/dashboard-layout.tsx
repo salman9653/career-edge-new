@@ -134,6 +134,7 @@ export function DashboardLayout({
       {/* Sidebar (handles mobile trigger, backdrop, collapse state, search, and navigation) */}
       <Sidebar
         user={user}
+        profile={profile}
         activeModule={activeModule}
         onNavClick={setActiveModule}
         onOnboardingOpen={onOnboardingOpen}
