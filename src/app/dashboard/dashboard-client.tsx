@@ -40,7 +40,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
         return (
           <CandidateDashboard
             user={user}
-            profile={profile}
+            profile={profile as CandidateProfile}
             onOnboardingOpen={() => setOnboardingOpen(true)}
           />
         );
@@ -48,7 +48,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
         return (
           <CompanyDashboard
             user={user}
-            profile={profile}
+            profile={profile as CompanyProfile}
             onOnboardingOpen={() => setOnboardingOpen(true)}
           />
         );
@@ -58,7 +58,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
         return (
           <CandidateDashboard
             user={user}
-            profile={profile}
+            profile={profile as CandidateProfile}
             onOnboardingOpen={() => setOnboardingOpen(true)}
           />
         );

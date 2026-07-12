@@ -36,6 +36,16 @@ export interface CandidateProfile {
   resumeBase64?: string;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Monetization & AI Tokens
+  activePlan?: "candidate-free" | "candidate-pro" | "candidate-pro-plus";
+  planExpiresAt?: Date;
+  aiTokens?: {
+    allocated: number;
+    purchased: number;
+    total: number;
+    lastRefilledAt: Date;
+  };
 }
 
 export interface CompanyProfile {

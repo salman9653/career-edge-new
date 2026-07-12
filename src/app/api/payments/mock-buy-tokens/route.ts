@@ -13,8 +13,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.accountType !== "company") {
-      return NextResponse.json({ error: "Only company accounts can purchase tokens" }, { status: 403 });
+    const accountType = session.user.accountType;
+    if (accountType !== "company" && accountType !== "candidate") {
+      return NextResponse.json({ error: "Only company or candidate accounts can purchase tokens" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -29,19 +30,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token package not found" }, { status: 404 });
     }
 
-    const profile = await db.collection("company_profiles").findOne({ userId: session.user.id });
+    const collectionName = accountType === "company" ? "company_profiles" : "candidate_profiles";
+    const profile = await db.collection(collectionName).findOne({ userId: session.user.id });
     if (!profile) {
-      return NextResponse.json({ error: "Company profile not found" }, { status: 404 });
+      return NextResponse.json({ error: `${accountType === "company" ? "Company" : "Candidate"} profile not found` }, { status: 404 });
     }
 
-    const currentAllocated = profile.aiTokens?.allocated ?? 15;
+    const currentAllocated = profile.aiTokens?.allocated ?? (accountType === "company" ? 15 : 5);
     const currentPurchased = profile.aiTokens?.purchased ?? 0;
     const addedTokens = packConfig.tokensCount ?? 0;
     
     const newPurchased = currentPurchased + addedTokens;
     const newTotal = currentAllocated + newPurchased;
 
-    await db.collection("company_profiles").updateOne(
+    await db.collection(collectionName).updateOne(
       { userId: session.user.id },
       {
         $set: {

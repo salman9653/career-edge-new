@@ -535,7 +535,10 @@ export async function deleteQuestion(questionId: string, companyId: string) {
 const DEFAULT_PLANS_FALLBACK = {
   "company-free": { monthlyTokens: 15, activeJobsLimit: 2, activeAssessmentsLimit: 2 },
   "company-pro": { monthlyTokens: 250, activeJobsLimit: 20, activeAssessmentsLimit: 10 },
-  "company-pro-plus": { monthlyTokens: 1000, activeJobsLimit: 50, activeAssessmentsLimit: 9999 }
+  "company-pro-plus": { monthlyTokens: 1000, activeJobsLimit: 50, activeAssessmentsLimit: 9999 },
+  "candidate-free": { monthlyTokens: 5, activeJobsLimit: 0, activeAssessmentsLimit: 0 },
+  "candidate-pro": { monthlyTokens: 50, activeJobsLimit: 0, activeAssessmentsLimit: 0 },
+  "candidate-pro-plus": { monthlyTokens: 200, activeJobsLimit: 0, activeAssessmentsLimit: 0 }
 };
 
 /**
@@ -674,27 +677,50 @@ export async function deductTokens(
 }
 
 /**
+ * Fetch all pricing configurations.
+ */
+export const getPricingTiers = cache(async () => {
+  try {
+    const client = await clientPromise;
+    const db = client.db();
+    const pricing = await db.collection("pricing").find({}).toArray();
+    return JSON.parse(JSON.stringify(pricing));
+  } catch (err) {
+    console.error("Failed to get pricing tiers in DAL:", err);
+    return [];
+  }
+});
+
+/**
  * Lazy token refill. Resets monthly allocated tokens if 30 days have elapsed.
  */
-export async function checkAndRefillTokens(companyId: string): Promise<void> {
+export async function checkAndRefillTokens(userId: string): Promise<void> {
   try {
     const client = await clientPromise;
     const db = client.db();
     
-    const profile = await db.collection("company_profiles").findOne({ userId: companyId });
+    // Find user to know their accountType
+    const user = await findUserByUserId(db, userId);
+    if (!user) return;
+    const accountType = user.accountType;
+    if (accountType !== "company" && accountType !== "candidate") return;
+    
+    const collectionName = accountType === "company" ? "company_profiles" : "candidate_profiles";
+    const profile = await db.collection(collectionName).findOne({ userId });
     if (!profile) return;
     
-    const activePlan = profile.activePlan || "company-free";
+    const defaultFreePlan = accountType === "company" ? "company-free" : "candidate-free";
+    const activePlan = profile.activePlan || defaultFreePlan;
     const now = new Date();
     
     // Initialize aiTokens if it doesn't exist
     if (!profile.aiTokens) {
       const planConfig = await db.collection("pricing").findOne({ id: activePlan });
       const defaultAllocated = planConfig?.monthlyTokens ?? 
-        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || 15);
+        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || (accountType === "company" ? 15 : 5));
         
-      await db.collection("company_profiles").updateOne(
-        { userId: companyId },
+      await db.collection(collectionName).updateOne(
+        { userId },
         {
           $set: {
             activePlan,
@@ -711,7 +737,7 @@ export async function checkAndRefillTokens(companyId: string): Promise<void> {
       
       // Log initial refill transaction
       await db.collection("token_transactions").insertOne({
-        companyId,
+        companyId: userId,
         amount: defaultAllocated,
         balanceAfter: defaultAllocated,
         type: "refill",
@@ -728,22 +754,21 @@ export async function checkAndRefillTokens(companyId: string): Promise<void> {
     
     if (diffDays >= 30) {
       const planConfig = await db.collection("pricing").findOne({ id: activePlan });
-      const maxAllocated = planConfig?.monthlyTokens ?? 
-        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || 15);
+      const baseAllocated = planConfig?.monthlyTokens ?? 
+        (DEFAULT_PLANS_FALLBACK[activePlan as keyof typeof DEFAULT_PLANS_FALLBACK]?.monthlyTokens || (accountType === "company" ? 15 : 5));
       
-      const currentAllocated = profile.aiTokens.allocated;
-      const refilledAmount = maxAllocated - currentAllocated;
+      const currentPurchased = profile.aiTokens.purchased ?? 0;
       
-      if (refilledAmount > 0) {
-        const newAllocated = maxAllocated;
-        const newPurchased = profile.aiTokens.purchased;
-        const newTotal = newAllocated + newPurchased;
+      // If remaining allocated is less than base plan, top it back up to base plan
+      if (profile.aiTokens.allocated < baseAllocated) {
+        const refilledAmount = baseAllocated - profile.aiTokens.allocated;
+        const newTotal = baseAllocated + currentPurchased;
         
-        await db.collection("company_profiles").updateOne(
-          { userId: companyId },
+        await db.collection(collectionName).updateOne(
+          { userId },
           {
             $set: {
-              "aiTokens.allocated": newAllocated,
+              "aiTokens.allocated": baseAllocated,
               "aiTokens.total": newTotal,
               "aiTokens.lastRefilledAt": now,
               updatedAt: now
@@ -753,7 +778,7 @@ export async function checkAndRefillTokens(companyId: string): Promise<void> {
         
         // Log refill transaction
         await db.collection("token_transactions").insertOne({
-          companyId,
+          companyId: userId,
           amount: refilledAmount,
           balanceAfter: newTotal,
           type: "refill",
@@ -762,8 +787,8 @@ export async function checkAndRefillTokens(companyId: string): Promise<void> {
         });
       } else {
         // Just update timestamp if they already have full/excess tokens
-        await db.collection("company_profiles").updateOne(
-          { userId: companyId },
+        await db.collection(collectionName).updateOne(
+          { userId },
           {
             $set: {
               "aiTokens.lastRefilledAt": now,
@@ -781,19 +806,24 @@ export async function checkAndRefillTokens(companyId: string): Promise<void> {
 /**
  * Fetch token transactions for a company.
  */
-export async function getCompanyTransactions(companyId: string, skip = 0, limit = 10) {
+export async function getCompanyTransactions(companyId: string, skip = 0, limit = 10, billingOnly = false) {
   try {
     const client = await clientPromise;
     const db = client.db();
     
+    const query: any = { companyId };
+    if (billingOnly) {
+      query.type = { $in: ["upgrade", "purchase"] };
+    }
+    
     const transactions = await db.collection("token_transactions")
-      .find({ companyId })
+      .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .toArray();
       
-    const totalCount = await db.collection("token_transactions").countDocuments({ companyId });
+    const totalCount = await db.collection("token_transactions").countDocuments(query);
     
     return {
       transactions: JSON.parse(JSON.stringify(transactions)),

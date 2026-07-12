@@ -13,14 +13,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (session.user.accountType !== "company") {
-      return NextResponse.json({ error: "Only company accounts can manage subscription plans" }, { status: 403 });
+    const accountType = session.user.accountType;
+    if (accountType !== "company" && accountType !== "candidate") {
+      return NextResponse.json({ error: "Only company or candidate accounts can manage subscription plans" }, { status: 403 });
     }
 
     const body = await request.json();
     const { planId } = body;
 
-    const validPlans = ["company-free", "company-pro", "company-pro-plus"];
+    const validPlans = accountType === "company"
+      ? ["company-free", "company-pro", "company-pro-plus"]
+      : ["candidate-free", "candidate-pro", "candidate-pro-plus"];
+
     if (!validPlans.includes(planId)) {
       return NextResponse.json({ error: "Invalid plan identifier" }, { status: 400 });
     }
@@ -34,19 +38,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selected plan configuration not found" }, { status: 404 });
     }
 
-    const profile = await db.collection("company_profiles").findOne({ userId: session.user.id });
+    const collectionName = accountType === "company" ? "company_profiles" : "candidate_profiles";
+    const profile = await db.collection(collectionName).findOne({ userId: session.user.id });
     if (!profile) {
-      return NextResponse.json({ error: "Company profile not found" }, { status: 404 });
+      return NextResponse.json({ error: `${accountType === "company" ? "Company" : "Candidate"} profile not found` }, { status: 404 });
     }
 
     const currentAllocated = profile.aiTokens?.allocated ?? 0;
     const currentPurchased = profile.aiTokens?.purchased ?? 0;
     
     // Set new allocated to plan's limit, and re-sum total
-    const newAllocated = planConfig.monthlyTokens ?? 15;
+    const newAllocated = planConfig.monthlyTokens ?? (accountType === "company" ? 15 : 5);
     const newTotal = newAllocated + currentPurchased;
 
-    await db.collection("company_profiles").updateOne(
+    await db.collection(collectionName).updateOne(
       { userId: session.user.id },
       {
         $set: {

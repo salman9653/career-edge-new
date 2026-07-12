@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useTransition } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Sparkles, 
   Coins, 
-  Check, 
-  Calendar, 
   History, 
-  ArrowUpRight, 
   Loader2, 
   CheckCircle2, 
   AlertCircle
@@ -39,8 +37,8 @@ interface TransactionItem {
 }
 
 export function BillingSettings() {
+  const router = useRouter();
   const [plans, setPlans] = useState<PricingItem[]>([]);
-  const [tokenPacks, setTokenPacks] = useState<PricingItem[]>([]);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,29 +47,16 @@ export function BillingSettings() {
   const isCompany = user?.accountType === "company";
   const [loadingPricing, setLoadingPricing] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
-  const [actionPending, startTransition] = useTransition();
 
-  // Company profile state loaded client-side for fresh values
+  // Profile details loaded client-side for fresh values
   const [profile, setProfile] = useState<any>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Checkout Confirm state
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    type: "upgrade" | "purchase";
-    item: PricingItem | null;
-  }>({ open: false, type: "upgrade", item: null });
-
   const [toast, setToast] = useState<{
     show: boolean;
     type: "success" | "error";
     message: string;
   }>({ show: false, type: "success", message: "" });
-
-  const showToast = (message: string, type: "success" | "error") => {
-    setToast({ show: true, type, message });
-    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
-  };
 
   // 1. Fetch Pricing Tiers
   useEffect(() => {
@@ -83,7 +68,6 @@ export function BillingSettings() {
           const data: PricingItem[] = body.data || [];
           const target = isCompany ? "company" : "candidate";
           setPlans(data.filter(p => p.type === "base-plan" && p.target === target));
-          setTokenPacks(data.filter(p => p.type === "ai-token-pack"));
         }
       } catch (err) {
         console.error("Failed to load pricing configurations:", err);
@@ -92,92 +76,35 @@ export function BillingSettings() {
       }
     }
     loadPricing();
-  }, []);
+  }, [isCompany]);
 
   // 2. Fetch Transactions & Profile details
   useEffect(() => {
     async function loadUserData() {
       setLoadingTransactions(true);
       try {
-        // Fetch fresh company profile (which has activePlan & aiTokens)
+        // Fetch profile (which has activePlan & aiTokens)
         const profileRes = await fetch("/api/profile");
         if (profileRes.ok) {
           const profileBody = await profileRes.json();
           setProfile(profileBody.profile || profileBody.data);
         }
 
-        // Fetch transactions
-        const txRes = await fetch(`/api/payments/transactions?page=${currentPage}&limit=5`);
+        // Fetch transactions (billingOnly=true to only show purchases and upgrades)
+        const txRes = await fetch(`/api/payments/transactions?page=${currentPage}&limit=5&billingOnly=true`);
         if (txRes.ok) {
           const txBody = await txRes.json();
           setTransactions(txBody.transactions || []);
           setTotalTransactions(txBody.totalCount || 0);
         }
       } catch (err) {
-        console.error("Failed to load company billing information:", err);
+        console.error("Failed to load billing information:", err);
       } finally {
         setLoadingTransactions(false);
       }
     }
     loadUserData();
   }, [currentPage, refreshTrigger]);
-
-  // Handle mock upgrade
-  const handleUpgrade = (item: PricingItem) => {
-    setConfirmDialog({ open: true, type: "upgrade", item });
-  };
-
-  // Handle mock buy tokens
-  const handleBuyTokens = (item: PricingItem) => {
-    setConfirmDialog({ open: true, type: "purchase", item });
-  };
-
-  // Confirm mock checkout action
-  const confirmCheckout = () => {
-    const { type, item } = confirmDialog;
-    if (!item) return;
-
-    setConfirmDialog(prev => ({ ...prev, open: false }));
-
-    startTransition(async () => {
-      try {
-        const endpoint = type === "upgrade" 
-          ? "/api/payments/mock-upgrade" 
-          : "/api/payments/mock-buy-tokens";
-          
-        const payload = type === "upgrade"
-          ? { planId: item.id }
-          : { packId: item.id };
-
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          const errBody = await res.json();
-          throw new Error(errBody.error || "Transaction failed");
-        }
-
-        showToast(
-          type === "upgrade" 
-            ? `Successfully upgraded to ${item.name}! (Mock Purchase)` 
-            : `Successfully purchased ${item.tokensCount} credits! (Mock Purchase)`,
-          "success"
-        );
-        
-        // Trigger page re-fetch
-        setRefreshTrigger(prev => prev + 1);
-        
-        // Refresh session
-        window.location.reload();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to execute transaction";
-        showToast(msg, "error");
-      }
-    });
-  };
 
   if (loadingPricing) {
     return (
@@ -188,18 +115,25 @@ export function BillingSettings() {
     );
   }
 
-  const activePlanId = profile?.activePlan || "company-free";
-  const aiTokens = profile?.aiTokens || { allocated: 15, purchased: 0, total: 15 };
+  const defaultFreePlan = isCompany ? "company-free" : "candidate-free";
+  const activePlanId = profile?.activePlan || defaultFreePlan;
+  const aiTokens = profile?.aiTokens || { allocated: isCompany ? 15 : 5, purchased: 0, total: isCompany ? 15 : 5 };
   
   const currentPlan = plans.find(p => p.id === activePlanId) || {
-    name: "Free Tier",
+    name: isCompany ? "Free Tier" : "Free Profile",
     price: 0,
     activeJobsLimit: 2,
     activeAssessmentsLimit: 2
   };
 
+  const maxTokens = plans.find(p => p.id === activePlanId)?.monthlyTokens ?? (isCompany ? 15 : 5);
+  const totalLimit = maxTokens + (aiTokens.purchased || 0);
+  const percentage = Math.min(100, Math.max(0, ((aiTokens.total ?? 0) / totalLimit) * 100));
+  const isLowBalance = (aiTokens.total ?? 0) <= 5;
+  const isProPlus = activePlanId.endsWith("-pro-plus");
+
   return (
-    <div className="w-full space-y-8 pb-10 text-left">
+    <div className="w-full space-y-6 pb-10 text-left">
       {/* Toast Notification */}
       {toast.show && (
         <div className={cn(
@@ -213,192 +147,145 @@ export function BillingSettings() {
         </div>
       )}
 
-      {/* 1. CURRENT SUBSCRIPTION CARD */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="rounded-3xl border border-neutral-200/40 dark:border-neutral-800/40 bg-card p-6 shadow-md relative overflow-hidden flex flex-col justify-between min-h-[180px]">
+      {/* 1. CURRENT SUBSCRIPTION CARD & TOKENS STATUS (Stacked full width) */}
+      <div className="flex flex-col gap-6 w-full">
+        {/* ACTIVE PLAN CARD */}
+        <div className="rounded-3xl border border-neutral-200/40 dark:border-neutral-800/40 bg-card p-6 shadow-md relative overflow-hidden flex flex-col min-h-[160px] w-full">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Active Plan</span>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-foreground">{currentPlan.name}</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20">
-                {currentPlan.price === 0 ? "Free" : "Active"}
-              </span>
+          
+          {/* Row 1: Left has active plan name, Right has upgrade button */}
+          <div className="flex justify-between items-center w-full gap-4">
+            <div>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Active Plan</span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-foreground">{currentPlan.name}</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20">
+                  {currentPlan.price === 0 ? "Free" : "Active"}
+                </span>
+              </div>
             </div>
             
+            {!isProPlus && (
+              <Button
+                onClick={() => router.push("/dashboard/upgrade")}
+                className="bg-ai-gradient border-0 text-white font-bold text-xs rounded-xl h-9 px-6 hover:opacity-90 transition-all cursor-pointer shadow-sm flex-shrink-0"
+              >
+                Upgrade Plan
+              </Button>
+            )}
+          </div>
+
+          {/* Row 2: Limits section (full width) */}
+          <div className="border-t border-neutral-200/40 dark:border-neutral-800/40 pt-4 mt-4 w-full">
             {isCompany ? (
-              <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-muted-foreground">Active Jobs Limit:</span>
+                  <span className="text-muted-foreground font-bold">Active Jobs Limit:</span>
                   <p className="text-foreground font-black mt-0.5">{currentPlan.activeJobsLimit} Active Posts</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Assessments Limit:</span>
+                  <span className="text-muted-foreground font-bold">Assessments Limit:</span>
                   <p className="text-foreground font-black mt-0.5">
                     {currentPlan.activeAssessmentsLimit === 9999 ? "Unlimited" : `${currentPlan.activeAssessmentsLimit} Active`}
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="mt-4 text-xs">
-                <span className="text-muted-foreground">Plan Benefits:</span>
-                <p className="text-foreground font-black mt-0.5">Full access to AI resume builder, career suggestions, and practice templates.</p>
+              <div className="text-xs">
+                <span className="text-muted-foreground font-bold">Plan Benefits:</span>
+                <p className="text-foreground font-black mt-0.5">Full access to AI resume builder, career suggestions, and mock practice templates.</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* 2. TOKENS STATUS */}
-        <div className="rounded-3xl border border-neutral-200/40 dark:border-neutral-800/40 bg-card p-6 shadow-md relative overflow-hidden flex flex-col justify-between min-h-[180px]">
+        {/* TOKENS BALANCE CARD */}
+        <div className={cn(
+          "rounded-3xl border p-6 shadow-md relative overflow-hidden flex flex-col min-h-[180px] w-full transition-all duration-300",
+          isLowBalance 
+            ? "border-red-500/50 dark:border-red-500/50 bg-red-500/[0.02] shadow-red-500/5" 
+            : "border-neutral-200/40 dark:border-neutral-800/40 bg-card"
+        )}>
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">AI Tokens Balance</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-black text-foreground">{aiTokens.total ?? 15}</span>
-              <span className="text-xs text-muted-foreground font-bold uppercase">Total Credits</span>
+          
+          {/* Row 1: Left has title and balance. Right has buy button */}
+          <div className="flex justify-between items-center w-full gap-4">
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">AI Tokens Balance</span>
+                {isLowBalance && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[7px] font-extrabold uppercase bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse">
+                    Low
+                  </span>
+                )}
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-3xl font-black text-foreground">{aiTokens.total ?? 0}</span>
+                <span className="text-xs text-muted-foreground font-bold uppercase">Total Credits</span>
+              </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4 text-xs">
+            <Button
+              onClick={() => router.push("/dashboard/token-store")}
+              className={cn(
+                "font-bold text-xs rounded-xl h-9 px-6 transition-all cursor-pointer shadow-sm border-0 flex-shrink-0",
+                isLowBalance 
+                  ? "bg-red-600 text-white hover:bg-red-700 animate-pulse" 
+                  : "bg-primary text-white hover:bg-primary/90"
+              )}
+            >
+              {isLowBalance ? "Buy Tokens Now" : "Buy Tokens"}
+            </Button>
+          </div>
+
+          {/* Row 2: Progress bar (full width) */}
+          <div className="space-y-1 mt-4 w-full">
+            <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+              <span>Remaining Tokens</span>
+              <span>{aiTokens.total ?? 0} / {totalLimit}</span>
+            </div>
+            <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-500",
+                  isLowBalance ? "bg-red-500 animate-pulse" : "bg-ai-gradient"
+                )} 
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Row 3: Card Footer containing Monthly Allocated, Purchased Top-up & Token History link */}
+          <div className="border-t border-neutral-200/40 dark:border-neutral-800/40 pt-3 mt-4 flex flex-row items-center justify-between w-full text-[10px]">
+            {/* Left Side: Credit breakdown */}
+            <div className="flex items-center gap-4 text-muted-foreground font-bold">
               <div>
-                <span className="text-muted-foreground">Monthly Allocated:</span>
-                <p className="text-foreground font-black mt-0.5">{aiTokens.allocated ?? 15} Credits</p>
+                <span>Monthly Allocated: </span>
+                <span className="text-foreground font-black">{aiTokens.allocated ?? 0}</span>
               </div>
+              <div className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full" />
               <div>
-                <span className="text-muted-foreground">Purchased Top-up:</span>
-                <p className="text-foreground font-black mt-0.5">{aiTokens.purchased ?? 0} Credits (Non-expiring)</p>
+                <span>Purchased Tokens: </span>
+                <span className="text-foreground font-black">{aiTokens.purchased ?? 0}</span>
               </div>
             </div>
+
+            {/* Right Side: Token History Link */}
+            <button
+              onClick={() => router.push("/dashboard/token-history")}
+              className="flex items-center gap-1.5 font-extrabold text-muted-foreground hover:text-foreground transition-all cursor-pointer border-0 bg-transparent p-0 group"
+            >
+              <History className="w-3.5 h-3.5 text-primary group-hover:scale-105 transition-transform" />
+              <span>Token History</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 3. SUBSCRIPTIONS GRID */}
+      {/* 2. BILLING HISTORY */}
       <div>
         <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-primary" /> Upgrade Subscription Plan
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {plans.filter(p => p.id !== "company-free").map((plan) => {
-            const isActive = plan.id === activePlanId;
-            return (
-              <div 
-                key={plan.id}
-                className={cn(
-                  "rounded-3xl border p-6 bg-card shadow-lg flex flex-col justify-between gap-6 relative overflow-hidden transition-all duration-300",
-                  isActive ? "border-primary ring-1 ring-primary" : "border-neutral-200/30 dark:border-neutral-800/50"
-                )}
-              >
-                <div>
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-base font-extrabold text-foreground">{plan.name}</h4>
-                    {isActive && (
-                      <span className="text-[9px] font-black uppercase text-white bg-primary px-2.5 py-0.5 rounded-full">
-                        Current Plan
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-baseline gap-0.5 mt-2">
-                    <span className="text-2xl font-black text-foreground">₹{plan.price}</span>
-                    <span className="text-[10px] text-muted-foreground">/ month</span>
-                  </div>
-
-                  <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-4" />
-
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2 text-xs text-foreground font-bold">
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span>{plan.monthlyTokens} AI Tokens / month</span>
-                    </li>
-                    {isCompany ? (
-                      <>
-                        <li className="flex items-center gap-2 text-xs text-foreground font-bold">
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>{plan.activeJobsLimit} Active Jobs limit</span>
-                        </li>
-                        <li className="flex items-center gap-2 text-xs text-foreground font-bold">
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>
-                            {plan.activeAssessmentsLimit === 9999 ? "Unlimited Assessments" : `${plan.activeAssessmentsLimit} Assessments limit`}
-                          </span>
-                        </li>
-                        {plan.features?.slice(3).map((feat, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground font-semibold">
-                            <Check className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </>
-                    ) : (
-                      <>
-                        {plan.features?.map((feat, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-xs text-muted-foreground font-semibold">
-                            <Check className="w-3.5 h-3.5 text-neutral-400 mt-0.5 flex-shrink-0" />
-                            <span>{feat}</span>
-                          </li>
-                        ))}
-                      </>
-                    )}
-                  </ul>
-                </div>
-
-                <Button
-                  onClick={() => handleUpgrade(plan)}
-                  disabled={isActive || actionPending}
-                  className={cn(
-                    "w-full font-bold text-xs rounded-xl h-10 cursor-pointer shadow-md",
-                    isActive 
-                      ? "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border-transparent"
-                      : "bg-ai-gradient border-0 text-white hover:opacity-90"
-                  )}
-                >
-                  {isActive ? "Current Plan" : `Upgrade for ₹${plan.price}`}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 4. BUY TOKENS ADD-ON */}
-      <div>
-        <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
-          <Coins className="w-4 h-4 text-primary" /> Buy Extra AI Tokens
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tokenPacks.map((pack) => (
-            <div 
-              key={pack.id}
-              className="rounded-3xl border border-neutral-200/30 dark:border-neutral-800/50 bg-card p-6 shadow-md flex flex-col justify-between gap-5 relative overflow-hidden hover:shadow-lg transition-all duration-300"
-            >
-              <div>
-                <h4 className="text-sm font-black text-foreground uppercase tracking-wider">{pack.name}</h4>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-2xl font-black text-foreground">₹{pack.price}</span>
-                  <span className="text-[10px] text-muted-foreground">one-time</span>
-                </div>
-                <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-3" />
-                <p className="text-xs text-muted-foreground flex items-center gap-1.5 font-bold">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" /> Includes {pack.tokensCount} AI Tokens
-                </p>
-              </div>
-
-              <Button
-                onClick={() => handleBuyTokens(pack)}
-                disabled={actionPending}
-                className="w-full font-bold text-xs rounded-xl h-9 cursor-pointer bg-primary text-white hover:bg-primary/90 border-0 transition-all shadow-sm"
-              >
-                Buy Pack
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 5. TRANSACTION HISTORY */}
-      <div>
-        <h3 className="text-sm font-black text-foreground uppercase tracking-wider mb-4 flex items-center gap-1.5">
-          <History className="w-4 h-4 text-primary" /> Credit Transactions History
+          <Coins className="w-4 h-4 text-primary" /> Billing History
         </h3>
         
         {loadingTransactions ? (
@@ -408,7 +295,7 @@ export function BillingSettings() {
           </div>
         ) : transactions.length === 0 ? (
           <div className="text-center py-8 rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 text-xs text-muted-foreground">
-            No transactions found yet.
+            No billing transactions found.
           </div>
         ) : (
           <div className="rounded-3xl border border-neutral-200/30 dark:border-neutral-800/50 overflow-hidden bg-card shadow-md">
@@ -467,7 +354,7 @@ export function BillingSettings() {
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   variant="outline"
-                  className="font-bold text-[10px] h-8 px-3 rounded-lg"
+                  className="font-bold text-[10px] h-8 px-3 rounded-lg border-neutral-200 dark:border-neutral-800"
                 >
                   Previous
                 </Button>
@@ -478,7 +365,7 @@ export function BillingSettings() {
                   disabled={currentPage * 5 >= totalTransactions}
                   onClick={() => setCurrentPage(p => p + 1)}
                   variant="outline"
-                  className="font-bold text-[10px] h-8 px-3 rounded-lg"
+                  className="font-bold text-[10px] h-8 px-3 rounded-lg border-neutral-200 dark:border-neutral-800"
                 >
                   Next
                 </Button>
@@ -487,51 +374,6 @@ export function BillingSettings() {
           </div>
         )}
       </div>
-
-      {/* 6. MOCK CHECKOUT CONFIRM DIALOG */}
-      {confirmDialog.open && confirmDialog.item && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div 
-            onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <div className="relative w-full max-w-sm bg-card rounded-3xl border border-neutral-200/40 dark:border-neutral-800/80 shadow-2xl p-6 z-10 text-center flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Coins className="w-6 h-6 text-primary" />
-            </div>
-            
-            <div>
-              <h3 className="text-base font-extrabold text-foreground">Confirm Mock Checkout</h3>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                {confirmDialog.type === "upgrade" 
-                  ? `Are you sure you want to upgrade to ${confirmDialog.item.name} for ₹${confirmDialog.item.price}?`
-                  : `Are you sure you want to buy ${confirmDialog.item.name} (${confirmDialog.item.tokensCount} tokens) for ₹${confirmDialog.item.price}?`
-                }
-              </p>
-              <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-bold p-2.5 rounded-xl mt-3">
-                ⚠️ This is a mock checkout. No real money will be charged.
-              </div>
-            </div>
-
-            <div className="flex gap-3 w-full mt-2">
-              <Button
-                variant="outline"
-                onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
-                className="font-bold text-xs h-9 rounded-xl flex-1 cursor-pointer"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={confirmCheckout}
-                disabled={actionPending}
-                className="font-bold text-xs h-9 rounded-xl flex-1 bg-ai-gradient border-0 text-white cursor-pointer shadow-md"
-              >
-                Confirm
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

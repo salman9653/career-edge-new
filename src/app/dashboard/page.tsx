@@ -28,7 +28,7 @@ export default async function DashboardPage() {
     const db = client.db();
     const collectionName = user.accountType === "company" ? "company_profiles" : "candidate_profiles";
     
-    if (user.accountType === "company") {
+    if (user.accountType === "company" || user.accountType === "candidate") {
       const { checkAndRefillTokens } = await import("@/lib/dal");
       await checkAndRefillTokens(user.id);
     }

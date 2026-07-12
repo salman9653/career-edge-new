@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -54,7 +54,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "Billing",
-    name: "Plans & Billing",
+    name: "Billing",
     description: "Manage subscription limits and AI tokens",
     icon: Coins,
     color: "text-indigo-500",
@@ -100,7 +100,9 @@ interface SettingsPageClientProps {
 
 export function SettingsPageClient({ user }: SettingsPageClientProps) {
   const router = useRouter();
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get("tab");
+  const [activeSection, setActiveSection] = useState<string | null>(initialTab || null);
   const [direction, setDirection] = useState<"forward" | "back">("forward");
 
   // Redirect to dashboard if on desktop/tablet
@@ -125,11 +127,13 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
   const handleSectionOpen = (sectionId: string) => {
     setDirection("forward");
     setActiveSection(sectionId);
+    router.replace(`/dashboard/settings?tab=${sectionId}`);
   };
 
   const handleBack = () => {
     setDirection("back");
     setActiveSection(null);
+    router.replace("/dashboard/settings");
   };
 
   const slideVariants = {

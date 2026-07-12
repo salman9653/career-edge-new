@@ -1,7 +1,12 @@
-import { loadEnvConfig } from "@next/env";
+import * as nextEnv from "@next/env";
 
 async function seedPricing() {
-  loadEnvConfig(process.cwd());
+  const loadEnv = nextEnv.loadEnvConfig || (nextEnv as any).default?.loadEnvConfig;
+  if (loadEnv) {
+    loadEnv(process.cwd());
+  } else {
+    console.warn("Could not find loadEnvConfig in @next/env module");
+  }
   const { default: clientPromise } = await import("../src/lib/db");
   
   const client = await clientPromise;

@@ -16,9 +16,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const billingOnly = searchParams.get("billingOnly") === "true";
     const skip = (page - 1) * limit;
 
-    const data = await getCompanyTransactions(session.user.id, skip, limit);
+    const data = await getCompanyTransactions(session.user.id, skip, limit, billingOnly);
     return NextResponse.json(data, { status: 200 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal Server Error";

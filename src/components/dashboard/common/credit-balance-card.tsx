@@ -53,9 +53,9 @@ export function CreditBalanceCard({
     if (typeof window !== "undefined") {
       const isDesktop = window.innerWidth >= 640;
       if (isDesktop) {
-        router.push(`${window.location.pathname}?settings=true&tab=Plans %26 Billing`);
+        router.push(`${window.location.pathname}?settings=true&tab=Billing`);
       } else {
-        router.push("/dashboard/settings");
+        router.push("/dashboard/settings?tab=Billing");
       }
     }
   };

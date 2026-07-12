@@ -21,7 +21,7 @@ interface SettingsModalProps {
 const TABS = [
   { name: "Account", icon: User },
   { name: "Appearance", icon: Palette },
-  { name: "Plans & Billing", icon: Coins },
+  { name: "Billing", icon: Coins },
   { name: "Chat", icon: MessageSquare },
   { name: "Notifications", icon: Bell },
   { name: "Security", icon: Shield },
@@ -36,7 +36,7 @@ export function SettingsModal({
   onTabChange,
 }: SettingsModalProps) {
   const allowedTabs = TABS.filter(t => {
-    if (t.name === "Plans & Billing" && user?.accountType !== "company" && user?.accountType !== "candidate") return false;
+    if (t.name === "Billing" && user?.accountType !== "company" && user?.accountType !== "candidate") return false;
     return true;
   });
 
@@ -65,7 +65,7 @@ export function SettingsModal({
               <AppearanceSettings />
             )}
 
-            {activeTab === "Plans & Billing" && (
+            {activeTab === "Billing" && (
               <BillingSettings />
             )}
 
