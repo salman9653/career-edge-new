@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor, Video, Sparkles, ArrowRight } from "lucide-react";
+import { User, Settings, LogOut, ChevronRight, Users, FileText, BookOpen, Award, Sun, Moon, Monitor, Video, Sparkles, ArrowRight, Coins } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { useUIStore } from "@/store/useUIStore";
 import { User as UserType } from "@/types";
@@ -106,6 +106,13 @@ export function MoreClient({ user, profile }: MoreClientProps) {
         ];
       case "admin":
         return [
+          {
+            title: "Manage Pricing",
+            description: "Configure pricing & plans",
+            icon: Coins,
+            path: "/dashboard/manage-pricing",
+            colorClass: "bg-amber-500/10 text-amber-500 border-amber-500/20"
+          },
           {
             title: "Manage App",
             description: "Configure app preferences",

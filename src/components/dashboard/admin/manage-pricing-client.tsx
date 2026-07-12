@@ -16,7 +16,8 @@ import {
   Sparkles,
   ArrowRight,
   Loader2,
-  CreditCard
+  CreditCard,
+  ChevronDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -130,17 +131,44 @@ export function ManagePricingClient({ initialPricing, initialPayments = [] }: Ma
   };
 
   const tabsList = [
-    { id: "company-plans", label: "Company Plans", icon: Building2 },
-    { id: "candidate-plans", label: "Candidate Plans", icon: User },
-    { id: "ai-tokens", label: "AI Tokens", icon: Coins },
-    { id: "coupons", label: "Coupons & Offers", icon: Percent },
-    { id: "transactions", label: "Transactions", icon: CreditCard },
+    { id: "company-plans", label: "Company Plans", mobileLabel: "Company", icon: Building2 },
+    { id: "candidate-plans", label: "Candidate Plans", mobileLabel: "Candidate", icon: User },
+    { id: "ai-tokens", label: "AI Tokens", mobileLabel: "Tokens", icon: Coins },
+    { id: "coupons", label: "Coupons & Offers", mobileLabel: "Coupons", icon: Percent },
+    { id: "transactions", label: "Transactions", mobileLabel: "Tx Log", icon: CreditCard },
   ];
 
   return (
     <div className="w-full flex-1 flex flex-col overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 text-left relative">
-      {/* Dynamic Tab Bar */}
-      <div className="flex flex-wrap border-b border-neutral-200/50 dark:border-neutral-800/80 gap-1 mb-8">
+      {/* Mobile Expanding Accordion-Pill Tabs (shown on mobile) */}
+      <div className="md:hidden flex items-center justify-between bg-neutral-100/80 dark:bg-neutral-900/50 p-1 rounded-2xl border border-neutral-200/30 dark:border-neutral-800/50 mb-8 w-full gap-1">
+        {tabsList.map((t) => {
+          const Icon = t.icon;
+          const isActive = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id as TabType)}
+              className={cn(
+                "flex items-center justify-center gap-1.5 py-2.5 rounded-xl cursor-pointer transition-all duration-300 select-none border-0 bg-transparent flex-1 text-xs",
+                isActive
+                  ? "bg-white dark:bg-neutral-800 text-primary shadow-sm font-black px-3.5 flex-[1.5]"
+                  : "text-muted-foreground hover:text-foreground px-1"
+              )}
+            >
+              <Icon className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+              {isActive && (
+                <span className="whitespace-nowrap transition-all duration-300 font-extrabold text-[10px] tracking-tight">
+                  {t.mobileLabel}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop Tabs (shown on md+ screens) */}
+      <div className="hidden md:flex flex-nowrap border-b border-neutral-200/50 dark:border-neutral-800/80 gap-1 mb-8 w-full">
         {tabsList.map((t) => {
           const Icon = t.icon;
           const isActive = activeTab === t.id;
@@ -399,67 +427,121 @@ export function ManagePricingClient({ initialPricing, initialPayments = [] }: Ma
                     No payments have been processed yet.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left">
-                      <thead>
-                        <tr className="border-b border-neutral-200/50 dark:border-neutral-800/50 text-[10px] uppercase font-bold text-muted-foreground bg-neutral-50/50 dark:bg-neutral-900/30">
-                          <th className="px-6 py-3.5">User</th>
-                          <th className="px-6 py-3.5">Purchased Item</th>
-                          <th className="px-6 py-3.5">Amount</th>
-                          <th className="px-6 py-3.5">Date</th>
-                          <th className="px-6 py-3.5">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
-                        {initialPayments.map((payment) => {
-                          const date = new Date(payment.createdAt);
-                          const formattedDate = date.toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          });
-                          return (
-                            <tr 
-                              key={payment._id || payment.razorpayPaymentId} 
-                              onClick={() => setSelectedPayment(payment)}
-                              className="hover:bg-neutral-50/45 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
-                            >
-                              <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
-                                    {payment.userName.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div className="flex flex-col text-left">
-                                    <span className="font-extrabold text-foreground text-xs leading-none">{payment.userName}</span>
-                                    <span className="text-[9px] uppercase tracking-widest font-black text-primary mt-1.5 leading-none">{payment.accountType}</span>
-                                  </div>
+                  <>
+                    {/* Mobile View: Stacked Cards (md:hidden) */}
+                    <div className="md:hidden divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                      {initialPayments.map((payment) => {
+                        const date = new Date(payment.createdAt);
+                        const formattedDate = date.toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        });
+                        return (
+                          <div
+                            key={payment._id || payment.razorpayPaymentId}
+                            onClick={() => setSelectedPayment(payment)}
+                            className="p-4 flex flex-col gap-3 hover:bg-neutral-50/45 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
+                          >
+                            {/* Top Row: User & Status */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs flex-shrink-0">
+                                  {payment.userName.charAt(0).toUpperCase()}
                                 </div>
-                              </td>
-                              <td className="px-6 py-4">
                                 <div className="flex flex-col text-left">
-                                  <span className="font-bold text-foreground text-xs leading-none">{payment.itemName}</span>
-                                  <span className="text-[10px] text-muted-foreground mt-1 font-mono leading-none">{payment.itemId}</span>
+                                  <span className="font-extrabold text-foreground text-xs leading-none">{payment.userName}</span>
+                                  <span className="text-[9px] uppercase tracking-wider font-black text-primary mt-1 leading-none">{payment.accountType}</span>
                                 </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="text-xs font-black text-foreground">₹{payment.amountPaid}</span>
-                              </td>
-                              <td className="px-6 py-4 text-xs font-bold text-muted-foreground">
-                                {formattedDate}
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/10">
-                                  {payment.status || "CAPTURED"}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                              </div>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/10">
+                                {payment.status || "CAPTURED"}
+                              </span>
+                            </div>
+
+                            {/* Middle Row: Item and Price */}
+                            <div className="flex items-baseline justify-between text-left">
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-foreground">{payment.itemName}</span>
+                                <span className="text-[9px] text-muted-foreground font-mono mt-0.5">{payment.itemId}</span>
+                              </div>
+                              <span className="text-xs font-black text-foreground">₹{payment.amountPaid}</span>
+                            </div>
+
+                            {/* Bottom Row: Date */}
+                            <div className="text-[10px] text-muted-foreground font-medium text-left">
+                              {formattedDate}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop View: Traditional Table (hidden md:block) */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse text-left">
+                        <thead>
+                          <tr className="border-b border-neutral-200/50 dark:border-neutral-800/50 text-[10px] uppercase font-bold text-muted-foreground bg-neutral-50/50 dark:bg-neutral-900/30">
+                            <th className="px-6 py-3.5">User</th>
+                            <th className="px-6 py-3.5">Purchased Item</th>
+                            <th className="px-6 py-3.5">Amount</th>
+                            <th className="px-6 py-3.5">Date</th>
+                            <th className="px-6 py-3.5">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60">
+                          {initialPayments.map((payment) => {
+                            const date = new Date(payment.createdAt);
+                            const formattedDate = date.toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            });
+                            return (
+                              <tr 
+                                key={payment._id || payment.razorpayPaymentId} 
+                                onClick={() => setSelectedPayment(payment)}
+                                className="hover:bg-neutral-50/45 dark:hover:bg-neutral-900/20 transition-colors cursor-pointer"
+                              >
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="relative w-8 h-8 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+                                      {payment.userName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col text-left">
+                                      <span className="font-extrabold text-foreground text-xs leading-none">{payment.userName}</span>
+                                      <span className="text-[9px] uppercase tracking-widest font-black text-primary mt-1.5 leading-none">{payment.accountType}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex flex-col text-left">
+                                    <span className="font-bold text-foreground text-xs leading-none">{payment.itemName}</span>
+                                    <span className="text-[10px] text-muted-foreground mt-1 font-mono leading-none">{payment.itemId}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-xs font-black text-foreground">₹{payment.amountPaid}</span>
+                                </td>
+                                <td className="px-6 py-4 text-xs font-bold text-muted-foreground">
+                                  {formattedDate}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 border border-emerald-500/10">
+                                    {payment.status || "CAPTURED"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </div>
             </motion.div>
