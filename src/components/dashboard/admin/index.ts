@@ -15,5 +15,7 @@ export { CandidateAboutSkills } from "./candidate-about-skills";
 export { EditAdminProfileForm } from "./edit-admin-profile-form";
 export { AdminProfileClient } from "./admin-profile-client";
 export { CandidateHistoryDetails } from "./candidate-history-details";
+export { ManagePricingClient } from "./manage-pricing-client";
+export { ManageAppClient } from "./manage-app-client";
 
 

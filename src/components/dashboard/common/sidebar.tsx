@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useUIStore } from "@/store/useUIStore"
 import { useClickOutside } from "@/hooks/useClickOutside"
 import {
@@ -25,7 +25,8 @@ import {
   Award,
   ArrowLeft,
   MessageSquare,
-  Bell
+  Bell,
+  Coins
 } from "lucide-react"
 import { CommandBar } from "./command-bar"
 import { SidebarNav } from "./sidebar-nav"
@@ -57,6 +58,7 @@ export function Sidebar({
   onSearchClick
 }: SidebarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const { headerTitle, headerBackHref } = useUIStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -97,6 +99,7 @@ export function Sidebar({
           { id: "dashboard", label: "Dashboard", icon: Home },
           { id: "manage-companies", label: "Manage Companies", icon: Building },
           { id: "candidates", label: "Manage Candidates", icon: Users },
+          { id: "manage-pricing", label: "Manage Pricing", icon: Coins },
           { id: "manage-app", label: "Manage App", icon: Settings }
         ]
       case "company":
@@ -144,6 +147,7 @@ export function Sidebar({
       questions: "Question Bank",
       companies: "Manage Companies",
       candidates: "Manage Candidates",
+      "manage-pricing": "Manage Pricing",
       "manage-app": "Manage App",
       applications: "My Applications",
       practice: "Practice",
@@ -157,7 +161,8 @@ export function Sidebar({
     return titleMap[activeModule] || activeModule.replace("-", " ")
   }
 
-  const resolvedTitle = headerTitle || getHeaderTitle()
+  const isCheckoutResultPage = pathname === "/dashboard/checkout/success" || pathname === "/dashboard/checkout/error"
+  const resolvedTitle = isCheckoutResultPage ? "" : (headerTitle || getHeaderTitle())
 
   const capitalizedTitle = resolvedTitle
     ? resolvedTitle
@@ -190,11 +195,11 @@ export function Sidebar({
           {activeModule !== "more" && (
             <span className="w-px h-4 bg-neutral-200 dark:bg-neutral-800 flex-shrink-0" />
           )}
-          {headerBackHref && activeModule !== "more" && (
+          {headerBackHref && activeModule !== "more" && !isCheckoutResultPage && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push(headerBackHref)}
+              onClick={() => router.back()}
               className="w-8 h-8 rounded-lg border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
             >
               <ArrowLeft className="w-4 h-4 text-foreground" />

@@ -110,3 +110,8 @@ export const STAGGER_CONTAINER_VARIANTS = {
     },
   },
 };
+
+export const SUPPORT_CONTACT = {
+  whatsappDisplay: "+91 87088 60428",
+  whatsappLink: "https://wa.me/918708860428"
+};

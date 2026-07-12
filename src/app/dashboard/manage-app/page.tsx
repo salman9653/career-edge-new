@@ -2,13 +2,12 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import clientPromise from "@/lib/db";
-import { ManageAppClient } from "@/components/dashboard/admin/manage-app-client";
+import { UnderDevelopmentModule } from "@/components/dashboard/common/under-development";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Manage App",
-  description: "Configure subscription plans, offerings, and token limits.",
+  description: "Configure system preferences and application integrations.",
 };
 
 export default async function ManageAppPage() {
@@ -20,16 +19,9 @@ export default async function ManageAppPage() {
     redirect("/dashboard");
   }
 
-  // Load pricing plans directly from the database on the server
-  let pricingData = [];
-  try {
-    const client = await clientPromise;
-    const db = client.db();
-    const data = await db.collection("pricing").find({}).toArray();
-    pricingData = JSON.parse(JSON.stringify(data));
-  } catch (err) {
-    console.error("Failed to load pricing data on server:", err);
-  }
-
-  return <ManageAppClient initialPricing={pricingData} />;
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <UnderDevelopmentModule title="Manage App" />
+    </div>
+  );
 }

@@ -54,14 +54,14 @@ interface PaymentRow {
   razorpaySignature?: string;
 }
 
-interface ManageAppClientProps {
+interface ManagePricingClientProps {
   initialPricing: PricingItem[];
   initialPayments?: PaymentRow[];
 }
 
-type TabType = "company-plans" | "candidate-plans" | "ai-tokens" | "coupons" | "payments";
+type TabType = "company-plans" | "candidate-plans" | "ai-tokens" | "coupons" | "transactions";
 
-export function ManageAppClient({ initialPricing, initialPayments = [] }: ManageAppClientProps) {
+export function ManagePricingClient({ initialPricing, initialPayments = [] }: ManagePricingClientProps) {
   const router = useRouter();
   const [pricing, setPricing] = useState<PricingItem[]>(initialPricing);
   const [activeTab, setActiveTab] = useState<TabType>("company-plans");
@@ -134,7 +134,7 @@ export function ManageAppClient({ initialPricing, initialPayments = [] }: Manage
     { id: "candidate-plans", label: "Candidate Plans", icon: User },
     { id: "ai-tokens", label: "AI Tokens", icon: Coins },
     { id: "coupons", label: "Coupons & Offers", icon: Percent },
-    { id: "payments", label: "Payments", icon: CreditCard },
+    { id: "transactions", label: "Transactions", icon: CreditCard },
   ];
 
   return (
@@ -373,10 +373,10 @@ export function ManageAppClient({ initialPricing, initialPayments = [] }: Manage
             </motion.div>
           )}
 
-          {/* TAB 5: PAYMENTS */}
-          {activeTab === "payments" && (
+          {/* TAB 5: TRANSACTIONS */}
+          {activeTab === "transactions" && (
             <motion.div
-              key="payments"
+              key="transactions"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}

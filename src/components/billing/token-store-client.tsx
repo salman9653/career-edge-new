@@ -51,7 +51,7 @@ export function TokenStoreClient({ packs, profile, accountType }: TokenStoreClie
   };
 
   const handlePurchaseSelect = (pack: PricingItem) => {
-    setConfirmDialog({ open: true, pack });
+    router.push(`/dashboard/checkout?itemId=${pack.id}`);
   };
 
   const confirmPurchase = () => {

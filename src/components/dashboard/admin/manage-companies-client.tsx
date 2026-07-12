@@ -142,24 +142,21 @@ export function ManageCompaniesClient({ companies: initialCompanies }: ManageCom
     {
       key: "subscription",
       label: "Subscription",
-      render: (row) => (
-        <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-          <User className="w-3.5 h-3.5" />
-          <span>{row.subscription}</span>
-        </div>
-      ),
-    },
-    {
-      key: "companySize",
-      label: "Company Size",
-      sortable: true,
-      render: (row) => <span className="text-xs">{row.companySize}</span>,
-    },
-    {
-      key: "companyType",
-      label: "Company Type",
-      sortable: true,
-      render: (row) => <span className="text-xs">{row.companyType}</span>,
+      render: (row) => {
+        const plan = row.subscription || "Free";
+        const isPremium = plan.includes("pro") || plan.includes("elite") || plan.includes("plus");
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+              isPremium
+                ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/20"
+                : "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border-neutral-200 dark:border-neutral-700"
+            }`}
+          >
+            {plan.replace("company-", "").toUpperCase()}
+          </span>
+        );
+      },
     },
     {
       key: "jobsPosted",

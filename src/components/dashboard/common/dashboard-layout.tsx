@@ -49,6 +49,8 @@ export function DashboardLayout({
       questions: "Question Bank",
       companies: "Manage Companies",
       candidates: "Manage Candidates",
+      "manage-pricing": "Manage Pricing",
+      "manage-app": "Manage App",
       app: "Manage App",
       applications: "My Applications",
       practice: "Practice",
@@ -62,7 +64,8 @@ export function DashboardLayout({
     return titleMap[activeModule] || activeModule.replace("-", " ");
   };
 
-  const resolvedTitle = headerTitle || getHeaderTitle();
+  const isCheckoutResultPage = pathname === "/dashboard/checkout/success" || pathname === "/dashboard/checkout/error";
+  const resolvedTitle = isCheckoutResultPage ? "" : (headerTitle || getHeaderTitle());
 
   const capitalizedTitle = resolvedTitle
     ? resolvedTitle
@@ -153,7 +156,7 @@ export function DashboardLayout({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => router.push(headerBackHref)}
+                    onClick={() => router.back()}
                     className="w-9 h-9 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
                   >
                     <ArrowLeft className="w-4.5 h-4.5" />

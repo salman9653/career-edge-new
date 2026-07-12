@@ -74,8 +74,25 @@ export async function getCompaniesWithUsers(searchQuery = "", skip = 0, limit = 
       {
         $lookup: {
           from: "user",
-          localField: "userId",
-          foreignField: "id",
+          let: { searchUserId: "$userId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ["$id", "$$searchUserId"] },
+                    { $eq: ["$_id", "$$searchUserId"] },
+                    { 
+                      $and: [
+                        { $eq: [{ $type: "$_id" }, "objectId"] },
+                        { $eq: ["$_id", { $toObjectId: "$$searchUserId" }] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
           as: "userData",
         },
       },
@@ -195,8 +212,25 @@ export async function getCandidatesWithUsers(searchQuery = "", skip = 0, limit =
       {
         $lookup: {
           from: "user",
-          localField: "userId",
-          foreignField: "id",
+          let: { searchUserId: "$userId" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $eq: ["$id", "$$searchUserId"] },
+                    { $eq: ["$_id", "$$searchUserId"] },
+                    { 
+                      $and: [
+                        { $eq: [{ $type: "$_id" }, "objectId"] },
+                        { $eq: ["$_id", { $toObjectId: "$$searchUserId" }] }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
           as: "userData",
         },
       },

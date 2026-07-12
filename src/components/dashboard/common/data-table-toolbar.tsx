@@ -311,7 +311,7 @@ export function DataTableToolbar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => router.push(headerBackHref)}
+              onClick={() => router.back()}
               className="w-9 h-9 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-pointer flex-shrink-0"
             >
               <ArrowLeft className="w-4.5 h-4.5" />

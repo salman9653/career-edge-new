@@ -22,31 +22,34 @@ export function CreditBalanceCard({
 
   const isCompany = user?.accountType === "company";
   const activePlan = profile?.activePlan || (isCompany ? "company-free" : "candidate-free");
-  const aiTokens = profile?.aiTokens || { allocated: 15, purchased: 0, total: 15 };
-  const allocated = aiTokens.allocated ?? 15;
-
-  let maxTokens = 15;
+  
+  const defaultAllocated = isCompany ? 15 : 5;
+  const aiTokens = profile?.aiTokens || { allocated: defaultAllocated, purchased: 0, total: defaultAllocated };
+  
+  let maxPlanTokens = isCompany ? 15 : 5;
   let planLabel = "Free";
 
   if (isCompany) {
     if (activePlan === "company-pro-plus") {
-      maxTokens = 1000;
+      maxPlanTokens = 1000;
       planLabel = "Pro+";
     } else if (activePlan === "company-pro") {
-      maxTokens = 250;
+      maxPlanTokens = 250;
       planLabel = "Pro";
     }
   } else {
     if (activePlan === "candidate-pro-plus") {
-      maxTokens = 500;
+      maxPlanTokens = 200;
       planLabel = "Pro+";
     } else if (activePlan === "candidate-pro") {
-      maxTokens = 150;
+      maxPlanTokens = 50;
       planLabel = "Pro";
     }
   }
 
-  const percentage = Math.min(100, Math.max(0, (allocated / maxTokens) * 100));
+  const currentBalance = aiTokens.total ?? defaultAllocated;
+  const totalLimit = maxPlanTokens + (aiTokens.purchased || 0);
+  const percentage = Math.min(100, Math.max(0, (currentBalance / totalLimit) * 100));
   const isFree = activePlan === (isCompany ? "company-free" : "candidate-free");
 
   const handleUpgradeClick = () => {
@@ -63,7 +66,7 @@ export function CreditBalanceCard({
   if (isCollapsed) {
     return (
       <div className="flex justify-center w-full">
-        <Tooltip content={`AI Credits: ${allocated}/${maxTokens} (${planLabel} Plan)`} side="right">
+        <Tooltip content={`AI Credits: ${currentBalance}/${totalLimit} (${planLabel} Plan)`} side="right">
           <button
             onClick={handleUpgradeClick}
             className="w-10 h-10 flex items-center justify-center rounded-xl bg-ai-gradient text-white shadow-md border-0 cursor-pointer hover:scale-105 transition-transform"
@@ -82,7 +85,7 @@ export function CreditBalanceCard({
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
           <Sparkles className="w-3.5 h-3.5 text-primary" /> AI Credits
         </span>
-        <span className="text-xs font-black text-foreground">{allocated} / {maxTokens}</span>
+        <span className="text-xs font-black text-foreground">{currentBalance} / {totalLimit}</span>
       </div>
       
       <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">

@@ -135,6 +135,26 @@ export function ManageCandidatesClient({ candidates: initialCandidates }: Manage
       ),
     },
     {
+      key: "subscription",
+      label: "Plan",
+      sortable: true,
+      render: (row) => {
+        const plan = row.subscription || "Free";
+        const isPremium = plan.includes("pro") || plan.includes("elite") || plan.includes("plus");
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
+              isPremium
+                ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/20"
+                : "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border-neutral-200 dark:border-neutral-700"
+            }`}
+          >
+            {plan.replace("candidate-", "").replace("company-", "").toUpperCase()}
+          </span>
+        );
+      },
+    },
+    {
       key: "status",
       label: "Status",
       render: (row) => {

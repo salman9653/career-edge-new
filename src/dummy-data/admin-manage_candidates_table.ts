@@ -9,6 +9,7 @@ export interface CandidateRow {
   status: string;
   applicationsCount: number;
   memberSince: string;
+  subscription?: string;
 }
 
 export const dummyCandidates: CandidateRow[] = [

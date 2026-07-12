@@ -54,6 +54,14 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
   };
 
   const handleUpgradeSelect = (plan: PricingItem) => {
+    const activePlan = plans.find(p => p.id === activePlanId);
+    const activePlanPrice = activePlan?.price ?? 0;
+
+    if (plan.price > activePlanPrice) {
+      router.push(`/dashboard/checkout?itemId=${plan.id}`);
+      return;
+    }
+
     setConfirmDialog({ open: true, plan });
   };
 
