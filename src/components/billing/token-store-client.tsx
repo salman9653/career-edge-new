@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Sparkles, Coins, AlertCircle, CheckCircle2, Loader2, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/store/useUIStore";
+import { useEffect } from "react";
 
 interface PricingItem {
   id: string;
@@ -24,6 +26,13 @@ interface TokenStoreClientProps {
 
 export function TokenStoreClient({ packs, profile, accountType }: TokenStoreClientProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    const { setHeader, clearHeader } = useUIStore.getState();
+    setHeader("Buy Extra AI Tokens", "", "/dashboard");
+    return () => clearHeader();
+  }, []);
+
   const [actionPending, startTransition] = useTransition();
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -95,7 +104,7 @@ export function TokenStoreClient({ packs, profile, accountType }: TokenStoreClie
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950/20 via-background to-neutral-900/10 dark:from-neutral-950 dark:to-neutral-900/40 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="py-6 px-4 sm:px-6 lg:px-8 w-full text-left">
       {/* Toast Notification */}
       {toast.show && (
         <div className={cn(
@@ -109,27 +118,21 @@ export function TokenStoreClient({ packs, profile, accountType }: TokenStoreClie
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto space-y-8 text-left">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-neutral-200/40 dark:border-neutral-800/40 pb-6">
-          <div className="space-y-2 flex-1">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground font-bold transition-colors cursor-pointer group"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              Back to Dashboard
-            </button>
-            <h1 className="text-3xl font-black text-foreground tracking-tight">
-              Buy Extra <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">AI Tokens</span>
-            </h1>
-            <p className="text-sm text-muted-foreground font-medium">
-              Top up your token balance to unlock more AI operations like resume building, mock interviews, and job matchmaking.
-            </p>
-          </div>
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Current Balance & Upgrade Link Row */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4 pb-2 text-left">
+          {/* Link to Upgrade */}
+          <button
+            onClick={() => router.push("/dashboard/upgrade")}
+            className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer border-0 bg-transparent p-0 group"
+          >
+            <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+            <span>Want monthly allocated tokens? Upgrade your plan</span>
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
 
           {/* Current Balance Card */}
-          <div className="w-full md:w-auto p-5 rounded-3xl border border-indigo-500/20 dark:border-indigo-500/30 bg-indigo-500/[0.02] flex flex-col justify-center min-w-[200px]">
+          <div className="w-full sm:w-auto p-5 rounded-3xl border border-indigo-500/20 dark:border-indigo-500/30 bg-indigo-500/[0.02] flex flex-col justify-center min-w-[200px] flex-shrink-0">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1">Your Token Balance</span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-3xl font-black text-foreground">{aiTokens.total ?? 0}</span>

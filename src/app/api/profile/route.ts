@@ -22,9 +22,23 @@ export async function GET() {
 
     if (accountType === "candidate") {
       const profile = await db.collection("candidate_profiles").findOne({ userId });
+      if (profile) {
+        let activePlan = profile.activePlan || "candidate-free";
+        if (activePlan.toLowerCase() === "free" || activePlan.toLowerCase() === "starter") {
+          activePlan = "candidate-free";
+        }
+        profile.activePlan = activePlan;
+      }
       return NextResponse.json({ profile });
     } else if (accountType === "company") {
       const profile = await db.collection("company_profiles").findOne({ userId });
+      if (profile) {
+        let activePlan = profile.activePlan || "company-free";
+        if (activePlan.toLowerCase() === "free" || activePlan.toLowerCase() === "starter") {
+          activePlan = "company-free";
+        }
+        profile.activePlan = activePlan;
+      }
       return NextResponse.json({ profile });
     } else if (accountType === "admin") {
       // Admin profile details reside in the user collection

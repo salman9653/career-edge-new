@@ -154,10 +154,10 @@ export function BillingSettings() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
           
           {/* Row 1: Left has active plan name, Right has upgrade button */}
-          <div className="flex justify-between items-center w-full gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
             <div>
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">Active Plan</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl font-black text-foreground">{currentPlan.name}</h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-primary/10 text-primary border border-primary/20">
                   {currentPlan.price === 0 ? "Free" : "Active"}
@@ -168,7 +168,7 @@ export function BillingSettings() {
             {!isProPlus && (
               <Button
                 onClick={() => router.push("/dashboard/upgrade")}
-                className="bg-ai-gradient border-0 text-white font-bold text-xs rounded-xl h-9 px-6 hover:opacity-90 transition-all cursor-pointer shadow-sm flex-shrink-0"
+                className="bg-ai-gradient border-0 text-white font-bold text-xs rounded-xl h-9 px-6 hover:opacity-90 transition-all cursor-pointer shadow-sm w-full sm:w-auto flex-shrink-0"
               >
                 Upgrade Plan
               </Button>
@@ -209,7 +209,7 @@ export function BillingSettings() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
           
           {/* Row 1: Left has title and balance. Right has buy button */}
-          <div className="flex justify-between items-center w-full gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-4">
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">AI Tokens Balance</span>
@@ -228,7 +228,7 @@ export function BillingSettings() {
             <Button
               onClick={() => router.push("/dashboard/token-store")}
               className={cn(
-                "font-bold text-xs rounded-xl h-9 px-6 transition-all cursor-pointer shadow-sm border-0 flex-shrink-0",
+                "font-bold text-xs rounded-xl h-9 px-6 transition-all cursor-pointer shadow-sm border-0 w-full sm:w-auto flex-shrink-0",
                 isLowBalance 
                   ? "bg-red-600 text-white hover:bg-red-700 animate-pulse" 
                   : "bg-primary text-white hover:bg-primary/90"
@@ -256,14 +256,14 @@ export function BillingSettings() {
           </div>
 
           {/* Row 3: Card Footer containing Monthly Allocated, Purchased Top-up & Token History link */}
-          <div className="border-t border-neutral-200/40 dark:border-neutral-800/40 pt-3 mt-4 flex flex-row items-center justify-between w-full text-[10px]">
+          <div className="border-t border-neutral-200/40 dark:border-neutral-800/40 pt-3 mt-4 flex flex-col sm:flex-row sm:items-center justify-between w-full gap-3 text-[10px]">
             {/* Left Side: Credit breakdown */}
-            <div className="flex items-center gap-4 text-muted-foreground font-bold">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-muted-foreground font-bold">
               <div>
                 <span>Monthly Allocated: </span>
                 <span className="text-foreground font-black">{aiTokens.allocated ?? 0}</span>
               </div>
-              <div className="w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full" />
+              <div className="hidden xs:block w-1 h-1 bg-neutral-300 dark:bg-neutral-700 rounded-full" />
               <div>
                 <span>Purchased Tokens: </span>
                 <span className="text-foreground font-black">{aiTokens.purchased ?? 0}</span>
@@ -273,7 +273,7 @@ export function BillingSettings() {
             {/* Right Side: Token History Link */}
             <button
               onClick={() => router.push("/dashboard/token-history")}
-              className="flex items-center gap-1.5 font-extrabold text-muted-foreground hover:text-foreground transition-all cursor-pointer border-0 bg-transparent p-0 group"
+              className="flex items-center gap-1.5 font-extrabold text-muted-foreground hover:text-foreground transition-all cursor-pointer border-0 bg-transparent p-0 group self-start sm:self-auto"
             >
               <History className="w-3.5 h-3.5 text-primary group-hover:scale-105 transition-transform" />
               <span>Token History</span>

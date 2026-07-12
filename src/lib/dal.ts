@@ -47,6 +47,14 @@ export const getProfile = cache(async (
     const collectionName = accountType === "company" ? "company_profiles" : "candidate_profiles";
     const profile = await db.collection(collectionName).findOne({ userId });
     if (!profile) return null;
+
+    const defaultFree = accountType === "company" ? "company-free" : "candidate-free";
+    let activePlan = profile.activePlan || defaultFree;
+    if (activePlan.toLowerCase() === "free" || activePlan.toLowerCase() === "starter") {
+      activePlan = defaultFree;
+    }
+    profile.activePlan = activePlan;
+
     return JSON.parse(JSON.stringify(profile));
   } catch (err) {
     console.error("Failed to get profile in DAL:", err);
@@ -571,7 +579,10 @@ export async function verifyPlanLimit(
     
     // 1. Fetch company profile
     const profile = await db.collection("company_profiles").findOne({ userId: companyId });
-    const activePlan = profile?.activePlan || "company-free";
+    let activePlan = profile?.activePlan || "company-free";
+    if (activePlan.toLowerCase() === "free" || activePlan.toLowerCase() === "starter") {
+      activePlan = "company-free";
+    }
     
     // 2. Fetch plan config from pricing collection
     let limit = 0;

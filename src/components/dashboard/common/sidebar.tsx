@@ -206,7 +206,7 @@ export function Sidebar({
             </span>
           ) : (
             <h1 className="text-sm font-extrabold tracking-tight text-foreground truncate text-left">
-              {capitalizedTitle}
+              {activeModule === "upgrade" ? "Upgrade" : capitalizedTitle}
             </h1>
           )}
         </div>

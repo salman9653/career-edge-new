@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Check, ArrowLeft, Sparkles, Shield, Coins, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Check, ArrowLeft, Sparkles, Shield, Coins, AlertCircle, CheckCircle2, Loader2, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/store/useUIStore";
 
 interface PricingItem {
   id: string;
@@ -28,6 +29,13 @@ interface UpgradeClientProps {
 
 export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClientProps) {
   const router = useRouter();
+  
+  useEffect(() => {
+    const { setHeader, clearHeader } = useUIStore.getState();
+    setHeader("Upgrade your Subscription plan", "", "/dashboard");
+    return () => clearHeader();
+  }, []);
+
   const [actionPending, startTransition] = useTransition();
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -97,7 +105,7 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950/20 via-background to-neutral-900/10 dark:from-neutral-950 dark:to-neutral-900/40 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="py-6 px-4 sm:px-6 lg:px-8 w-full text-left">
       {/* Toast Notification */}
       {toast.show && (
         <div className={cn(
@@ -111,31 +119,17 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto space-y-10">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-neutral-200/40 dark:border-neutral-800/40 pb-6">
-          <div className="space-y-2">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground font-bold transition-colors cursor-pointer group animate-in fade-in slide-in-from-left duration-300"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              Back to Dashboard
-            </button>
-            <h1 className="text-3xl font-black text-foreground tracking-tight">
-              Upgrade Your <span className="bg-gradient-to-r from-primary to-indigo-500 bg-clip-text text-transparent">Subscription Plan</span>
-            </h1>
-            <p className="text-sm text-muted-foreground font-medium">
-              Choose the tier that best suits your requirements and multiply your success rate.
-            </p>
-          </div>
-          
-          <div className="px-4 py-2 bg-indigo-500/5 border border-indigo-500/10 dark:border-indigo-500/20 rounded-2xl flex items-center gap-2.5">
-            <Shield className="w-4 h-4 text-indigo-500" />
-            <span className="text-xs font-extrabold uppercase text-indigo-500 tracking-wider">
-              {accountType === "company" ? "Recruiter Account" : "Candidate Profile"}
-            </span>
-          </div>
+      <div className="max-w-5xl mx-auto space-y-8">
+        {/* Link to Token Store */}
+        <div className="flex justify-end w-full pb-2">
+          <button
+            onClick={() => router.push("/dashboard/token-store")}
+            className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer border-0 bg-transparent p-0 group"
+          >
+            <Coins className="w-4 h-4 text-primary" />
+            <span>Need extra credits? Go to Token Store</span>
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
         </div>
 
         {/* Pricing Cards Grid */}
@@ -151,23 +145,41 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
             const isPro = plan.id.endsWith("-pro");
             const isFree = plan.id.endsWith("-free");
 
+            const userIsFree = activePlanId.endsWith("-free");
+            const userIsPro = activePlanId.endsWith("-pro");
+            const userIsProPlus = activePlanId.endsWith("-pro-plus");
+
+            let buttonText = `Select Plan (₹${plan.price})`;
+            if (!isActive) {
+              if (userIsFree) {
+                if (isPro) buttonText = "Upgrade to Pro";
+                if (isProPlus) buttonText = "Upgrade to Pro+";
+              } else if (userIsPro) {
+                if (isFree) buttonText = "Cancel Subscription";
+                if (isProPlus) buttonText = "Upgrade to Pro+";
+              } else if (userIsProPlus) {
+                if (isFree) buttonText = "Cancel Subscription";
+                if (isPro) buttonText = "Downgrade to Pro";
+              }
+            }
+
             return (
               <motion.div 
                 key={plan.id}
                 variants={itemVariants}
                 className={cn(
-                  "rounded-[2.5rem] border bg-card p-8 shadow-xl flex flex-col justify-between gap-8 relative overflow-hidden transition-all duration-300 group hover:shadow-2xl hover:-translate-y-1",
+                  "rounded-[2.5rem] border p-8 shadow-xl flex flex-col justify-between gap-8 relative overflow-hidden transition-all duration-300 group hover:shadow-2xl hover:-translate-y-1",
                   isActive 
-                    ? "border-primary ring-2 ring-primary/40 shadow-primary/5" 
-                    : "border-neutral-200/40 dark:border-neutral-800/80",
-                  isProPlus && "bg-neutral-900/10 dark:bg-neutral-900/40"
+                    ? "border-primary ring-2 ring-primary/40 shadow-primary/10 bg-primary/[0.01] scale-[1.02]" 
+                    : "border-neutral-200/40 dark:border-neutral-800/80 bg-card",
+                  isProPlus && !isActive && "bg-gradient-to-b from-indigo-500/5 to-card dark:from-indigo-500/10 dark:to-card border-indigo-500/30 dark:border-indigo-500/40"
                 )}
               >
                 {/* Glow effects */}
                 {isProPlus && (
                   <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/15 transition-all" />
                 )}
-                {isPro && (
+                {isPro && !isActive && (
                   <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-purple-500/10 transition-all" />
                 )}
 
@@ -179,11 +191,6 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
                         {isFree ? "Starter Pack" : isPro ? "Recommended" : "Enterprise Elite"}
                       </p>
                     </div>
-                    {isActive && (
-                      <span className="text-[9px] font-black uppercase text-white bg-primary px-3 py-1 rounded-full shadow-md">
-                        Current Plan
-                      </span>
-                    )}
                   </div>
                   
                   <div className="flex items-baseline gap-1 mt-6">
@@ -212,9 +219,7 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
                           <div className="w-5 h-5 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 border border-emerald-500/25">
                             <Check className="w-3 h-3 text-emerald-500" />
                           </div>
-                          <span>
-                            {plan.activeAssessmentsLimit === 9999 ? "Unlimited Assessments" : `${plan.activeAssessmentsLimit} Assessments limit`}
-                          </span>
+                          <span>{plan.activeAssessmentsLimit === 9999 ? "Unlimited" : `${plan.activeAssessmentsLimit} Assessments`}</span>
                         </li>
                         {plan.features?.slice(3).map((feat, idx) => (
                           <li key={idx} className="flex items-start gap-2.5 text-xs text-muted-foreground font-semibold">
@@ -240,20 +245,25 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
                   </ul>
                 </div>
 
-                <Button
-                  onClick={() => handleUpgradeSelect(plan)}
-                  disabled={isActive || actionPending}
-                  className={cn(
-                    "w-full font-black text-xs rounded-2xl h-12 cursor-pointer shadow-md transition-all border-0",
-                    isActive 
-                      ? "bg-neutral-100 dark:bg-neutral-800 text-muted-foreground border-transparent pointer-events-none"
-                      : isProPlus
-                      ? "bg-ai-gradient text-white hover:shadow-indigo-500/10 hover:opacity-90 animate-pulse"
-                      : "bg-primary text-white hover:bg-primary/90"
-                  )}
-                >
-                  {isActive ? "Your Active Plan" : `Select Plan (₹${plan.price})`}
-                </Button>
+                {isActive ? (
+                  <div className="w-full text-center py-3 bg-neutral-100 dark:bg-neutral-800/60 text-muted-foreground font-black text-xs rounded-2xl uppercase tracking-widest select-none border border-neutral-200/30 dark:border-neutral-700/30 flex items-center justify-center gap-1.5 h-12">
+                    <CheckCircle2 className="w-4 h-4 text-primary animate-pulse" />
+                    <span>Active Plan</span>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => handleUpgradeSelect(plan)}
+                    disabled={actionPending}
+                    className={cn(
+                      "w-full font-black text-xs rounded-2xl h-12 cursor-pointer shadow-md transition-all border-0",
+                      isProPlus
+                        ? "bg-ai-gradient text-white hover:shadow-indigo-500/10 hover:opacity-90"
+                        : "bg-primary text-white hover:bg-primary/90"
+                    )}
+                  >
+                    {buttonText}
+                  </Button>
+                )}
               </motion.div>
             );
           })}
