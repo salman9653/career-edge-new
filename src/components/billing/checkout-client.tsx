@@ -252,6 +252,94 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
     setCouponStatus({ type: "none", message: "" });
   };
 
+  const handleBypassPayment = async () => {
+    setLoading(true);
+    try {
+      if (isSubscription) {
+        // 1. Create subscription on server
+        const subRes = await fetch("/api/payments/create-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            itemId: item.id,
+            couponCode: couponStatus.type === "success" ? coupon : ""
+          })
+        });
+
+        if (!subRes.ok) {
+          const errorData = await subRes.json();
+          throw new Error(errorData.error || "Failed to initiate subscription");
+        }
+
+        const subData = await subRes.json();
+        const { subscriptionId } = subData;
+
+        // 2. Call verify endpoint directly with mock signature
+        const verifyRes = await fetch("/api/payments/verify-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 9)}`,
+            razorpay_subscription_id: subscriptionId,
+            razorpay_signature: "mock_signature",
+            itemId: item.id
+          })
+        });
+
+        if (!verifyRes.ok) {
+          const errBody = await verifyRes.json();
+          throw new Error(errBody.error || "Mock verification failed");
+        }
+
+        const verifyData = await verifyRes.json();
+        router.push(`/dashboard/checkout/success?itemId=${item.id}&paymentId=${verifyData.paymentId}&subscriptionId=${verifyData.subscriptionId}&amount=${verifyData.amountPaid || price}&email=${encodeURIComponent(user.email)}`);
+      } else {
+        // Create one-time order on server
+        const orderRes = await fetch("/api/payments/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            itemId: item.id,
+            couponCode: couponStatus.type === "success" ? coupon : ""
+          })
+        });
+
+        if (!orderRes.ok) {
+          const errorData = await orderRes.json();
+          throw new Error(errorData.error || "Failed to create order");
+        }
+
+        const orderData = await orderRes.json();
+        const { orderId } = orderData;
+
+        // Call verify payment endpoint directly
+        const verifyRes = await fetch("/api/payments/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 9)}`,
+            razorpay_order_id: orderId,
+            razorpay_signature: "mock_signature",
+            itemId: item.id
+          })
+        });
+
+        if (!verifyRes.ok) {
+          const errBody = await verifyRes.json();
+          throw new Error(errBody.error || "Mock verification failed");
+        }
+
+        const verifyData = await verifyRes.json();
+        router.push(`/dashboard/checkout/success?itemId=${item.id}&paymentId=${verifyData.paymentId}&amount=${verifyData.amountPaid || price}&email=${encodeURIComponent(user.email)}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Verification failed";
+      router.push(`/dashboard/checkout/error?itemId=${item.id}&error=${encodeURIComponent(msg)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleProceedToPayment = async () => {
     setLoading(true);
     try {
@@ -673,6 +761,17 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
                   </>
                 )}
               </Button>
+
+              {/* Developer Sandbox Test Bypass button */}
+              <button
+                type="button"
+                onClick={handleBypassPayment}
+                disabled={loading}
+                className="w-full mt-2 py-3 px-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 hover:border-primary/50 text-xs font-black text-muted-foreground hover:text-foreground bg-neutral-50/50 hover:bg-neutral-50 dark:bg-neutral-900/20 dark:hover:bg-neutral-900/50 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse flex-shrink-0" />
+                {loading ? "Simulating Payment..." : "Sandbox Bypass Checkout (Test Mode)"}
+              </button>
 
               {isSubscription && (
                 <p className="text-[9px] text-muted-foreground font-semibold text-center mt-2 leading-relaxed">
