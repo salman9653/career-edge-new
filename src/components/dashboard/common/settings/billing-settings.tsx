@@ -85,6 +85,8 @@ export function BillingSettings() {
 
       showToast("Subscription cancelled! Access will remain active until billing period ends.", "success");
       setShowCancelWizard(false);
+      // Force Next.js to refresh all Server Components data on this page & layout
+      router.refresh();
       // Trigger user profile reload
       setRefreshTrigger(prev => prev + 1);
     } catch (err: unknown) {

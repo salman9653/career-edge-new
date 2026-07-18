@@ -153,12 +153,12 @@ export default async function PaymentSuccessPage({ searchParams }: SuccessPagePr
 
         {/* Back button */}
         <div className="w-full mt-8">
-          <Link href="/dashboard" passHref legacyBehavior>
+          <a href="/dashboard" className="w-full">
             <Button className="w-full bg-neutral-900 dark:bg-neutral-800 text-white font-extrabold text-xs h-12 rounded-2xl hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-1.5 border-0">
               <span>Go to Dashboard</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Button>
-          </Link>
+          </a>
         </div>
       </div>
     </div>

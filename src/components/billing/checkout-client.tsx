@@ -340,6 +340,15 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
     }
   };
 
+  const handleMainPaymentClick = async () => {
+    const isMockSub = process.env.NEXT_PUBLIC_MOCK_SUBSCRIPTION_CHECKOUT === "true";
+    if (isSubscription && isMockSub) {
+      await handleBypassPayment();
+    } else {
+      await handleProceedToPayment();
+    }
+  };
+
   const handleProceedToPayment = async () => {
     setLoading(true);
     try {
@@ -744,11 +753,13 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
               </div>
 
               <Button
-                onClick={handleProceedToPayment}
-                disabled={loading}
-                className="w-full bg-ai-gradient border-0 text-white font-extrabold text-xs rounded-2xl h-12 hover:opacity-90 transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                onClick={handleMainPaymentClick}
+                disabled={loading || process.env.NEXT_PUBLIC_DISABLE_PAYMENTS === "true"}
+                className="w-full bg-ai-gradient border-0 text-white font-extrabold text-xs rounded-2xl h-12 hover:opacity-90 transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 animate-none"
               >
-                {loading ? (
+                {process.env.NEXT_PUBLIC_DISABLE_PAYMENTS === "true" ? (
+                  <span>Payments Disabled</span>
+                ) : loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>Processing...</span>
@@ -761,17 +772,6 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
                   </>
                 )}
               </Button>
-
-              {/* Developer Sandbox Test Bypass button */}
-              <button
-                type="button"
-                onClick={handleBypassPayment}
-                disabled={loading}
-                className="w-full mt-2 py-3 px-4 rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 hover:border-primary/50 text-xs font-black text-muted-foreground hover:text-foreground bg-neutral-50/50 hover:bg-neutral-50 dark:bg-neutral-900/20 dark:hover:bg-neutral-900/50 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse flex-shrink-0" />
-                {loading ? "Simulating Payment..." : "Sandbox Bypass Checkout (Test Mode)"}
-              </button>
 
               {isSubscription && (
                 <p className="text-[9px] text-muted-foreground font-semibold text-center mt-2 leading-relaxed">

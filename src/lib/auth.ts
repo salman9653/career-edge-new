@@ -26,6 +26,12 @@ export const auth = betterAuth({
   database: mongodbAdapter(client.db(), {
     client,
   }),
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://*.ngrok-free.dev",
+    "https://*.ngrok-free.app",
+    "https://*.localtunnel.me"
+  ],
   emailAndPassword: {
     enabled: true,
   },
