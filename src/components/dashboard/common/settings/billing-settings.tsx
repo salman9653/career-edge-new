@@ -58,6 +58,43 @@ export function BillingSettings() {
     message: string;
   }>({ show: false, type: "success", message: "" });
 
+  // Cancel subscription states
+  const [showCancelWizard, setShowCancelWizard] = useState(false);
+  const [cancelStep, setCancelStep] = useState(1);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelReasonDetail, setCancelReasonDetail] = useState("");
+  const [cancelPending, setCancelPending] = useState(false);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ show: true, type, message });
+    setTimeout(() => setToast(prev => ({ ...prev, show: false })), 4000);
+  };
+
+  const handleConfirmCancel = async () => {
+    setCancelPending(true);
+    try {
+      const res = await fetch("/api/payments/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to cancel subscription");
+      }
+
+      showToast("Subscription cancelled! Access will remain active until billing period ends.", "success");
+      setShowCancelWizard(false);
+      // Trigger user profile reload
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to cancel subscription";
+      showToast(msg, "error");
+    } finally {
+      setCancelPending(false);
+    }
+  };
+
   // 1. Fetch Pricing Tiers
   useEffect(() => {
     async function loadPricing() {
@@ -197,6 +234,37 @@ export function BillingSettings() {
               </div>
             )}
           </div>
+
+          {/* Row 3: Subscription Billing Details / Expiry warning & Cancel button */}
+          {profile?.subscription?.subscriptionId && (
+            <div className="border-t border-neutral-200/40 dark:border-neutral-800/40 pt-4 mt-4 flex flex-row items-center justify-between w-full text-xs">
+              <div className="flex flex-col text-left gap-0.5">
+                {profile.subscription.status === "canceling" ? (
+                  <span className="text-amber-500 font-extrabold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Access expires on {new Date(profile.subscription.currentPeriodEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })} (Subscription Canceled)
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground font-semibold">
+                    Next renewal: <span className="text-foreground font-black">{new Date(profile.subscription.currentPeriodEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                  </span>
+                )}
+              </div>
+
+              {profile.subscription.status === "active" && (
+                <button
+                  onClick={() => {
+                    setCancelStep(1);
+                    setCancelReason("");
+                    setShowCancelWizard(true);
+                  }}
+                  className="text-red-500 hover:text-red-600 font-extrabold hover:underline cursor-pointer border-0 bg-transparent p-0 transition-colors"
+                >
+                  Cancel Plan
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* TOKENS BALANCE CARD */}
@@ -374,6 +442,170 @@ export function BillingSettings() {
           </div>
         )}
       </div>
+
+      {/* CANCELLATION RETENTION WIZARD DIALOG */}
+      {showCancelWizard && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div 
+            onClick={() => !cancelPending && setShowCancelWizard(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md bg-card rounded-[2rem] border border-neutral-200/40 dark:border-neutral-800/80 shadow-2xl p-6 z-10 text-left flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            {/* Step 1: Retention benefits loss */}
+            {cancelStep === 1 && (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground">Cancel Premium Subscription?</h3>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    By canceling, you will lose access to premium privileges when your current cycle expires:
+                  </p>
+                  <ul className="mt-3.5 space-y-2 text-[11px] text-foreground font-bold">
+                    {isCompany ? (
+                      <>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>Active Jobs posting limit will decrease from 20+ to only 2 posts.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>Active Assessments screening limit will decrease to only 2.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>AI Tokens monthly refill allotment will cease.</span>
+                        </li>
+                      </>
+                    ) : (
+                      <>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>Unlimited AI Mock Interview practice simulators will be blocked.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>AI Resume Rewrite checks and recruiter boost profiles will turn off.</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          <span>AI Tokens monthly refill allotment will cease.</span>
+                        </li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+                <div className="flex gap-3 w-full mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelWizard(false)}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 cursor-pointer border-neutral-200 dark:border-neutral-800"
+                  >
+                    Keep My Plan
+                  </Button>
+                  <Button
+                    onClick={() => setCancelStep(2)}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 bg-red-500 hover:bg-red-600 border-0 text-white cursor-pointer shadow-md"
+                  >
+                    Continue to Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Feedback Survey */}
+            {cancelStep === 2 && (
+              <>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground">Why are you canceling?</h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Help us improve. Please select the primary reason:
+                  </p>
+                  
+                  <div className="mt-4 space-y-2">
+                    {[
+                      "Too expensive / High pricing",
+                      "Missing required features",
+                      "Difficulty using the platform",
+                      "Switching to another service",
+                      "Only needed it for temporary work"
+                    ].map((reason) => (
+                      <label key={reason} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900/50 cursor-pointer text-xs font-semibold text-foreground">
+                        <input
+                          type="radio"
+                          name="cancelReason"
+                          value={reason}
+                          checked={cancelReason === reason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          className="w-4 h-4 text-primary focus:ring-primary border-neutral-300"
+                        />
+                        <span>{reason}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <textarea
+                    placeholder="Tell us more (Optional)"
+                    value={cancelReasonDetail}
+                    onChange={(e) => setCancelReasonDetail(e.target.value)}
+                    className="w-full mt-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-card text-xs font-medium focus:ring-1 focus:ring-primary outline-none min-h-[70px] resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 w-full mt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCancelStep(1)}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 cursor-pointer border-neutral-200 dark:border-neutral-800"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => setCancelStep(3)}
+                    disabled={!cancelReason}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 bg-primary text-white border-0 cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Step 3: Final confirmation */}
+            {cancelStep === 3 && (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground">Confirm Cancellation</h3>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                    Your subscription will end. You will retain premium access until <span className="font-bold text-foreground">{profile?.subscription?.currentPeriodEnd ? new Date(profile.subscription.currentPeriodEnd).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : ""}</span>, after which your account will automatically downgrade to the Free Tier.
+                  </p>
+                </div>
+                <div className="flex gap-3 w-full mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelWizard(false)}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 cursor-pointer border-neutral-200 dark:border-neutral-800"
+                  >
+                    Nevermind
+                  </Button>
+                  <Button
+                    onClick={handleConfirmCancel}
+                    disabled={cancelPending}
+                    className="font-bold text-xs h-9 rounded-xl flex-1 bg-red-500 hover:bg-red-600 border-0 text-white cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    {cancelPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    Confirm Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -7,16 +7,20 @@ async function seedPricing() {
   } else {
     console.warn("Could not find loadEnvConfig in @next/env module");
   }
-  const { default: clientPromise } = await import("../src/lib/db");
-  
-  const client = await clientPromise;
+  const { MongoClient } = await import("mongodb");
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    throw new Error('Invalid/Missing environment variable: "MONGODB_URI"');
+  }
+  const client = new MongoClient(uri);
+  await client.connect();
   const db = client.db();
   const pricingColl = db.collection("pricing");
   
   console.log("Seeding pricing collection...");
   
   const defaultPricing = [
-    // Company Base Plans
+    // Company Base Plans (Monthly)
     {
       id: "company-free",
       type: "base-plan",
@@ -26,6 +30,7 @@ async function seedPricing() {
       monthlyTokens: 15,
       activeJobsLimit: 2,
       activeAssessmentsLimit: 2,
+      billingPeriod: "monthly",
       features: [
         "2 Active Job Posts",
         "2 Active Assessments",
@@ -39,10 +44,11 @@ async function seedPricing() {
       type: "base-plan",
       target: "company",
       name: "Pro Plan",
-      price: 2900, // Rs 2900
+      price: 2900,
       monthlyTokens: 250,
       activeJobsLimit: 20,
       activeAssessmentsLimit: 10,
+      billingPeriod: "monthly",
       features: [
         "20 Active Job Posts",
         "10 Active Assessments",
@@ -57,10 +63,11 @@ async function seedPricing() {
       type: "base-plan",
       target: "company",
       name: "Pro+ Plan",
-      price: 9900, // Rs 9900
+      price: 9900,
       monthlyTokens: 1000,
       activeJobsLimit: 50,
-      activeAssessmentsLimit: 9999, // Unlimited
+      activeAssessmentsLimit: 9999,
+      billingPeriod: "monthly",
       features: [
         "50 Active Job Posts",
         "Unlimited Assessments",
@@ -71,8 +78,51 @@ async function seedPricing() {
       ],
       updatedAt: new Date()
     },
+
+    // Company Base Plans (Yearly)
+    {
+      id: "company-pro-yearly",
+      type: "base-plan",
+      target: "company",
+      name: "Pro Plan (Yearly)",
+      price: 29000,
+      monthlyTokens: 250,
+      activeJobsLimit: 20,
+      activeAssessmentsLimit: 10,
+      billingPeriod: "yearly",
+      features: [
+        "20 Active Job Posts",
+        "10 Active Assessments",
+        "250 AI Tokens/month",
+        "Advanced Candidate Screening",
+        "Priority Email Support",
+        "Billed annually (Save ~17%)"
+      ],
+      updatedAt: new Date()
+    },
+    {
+      id: "company-pro-plus-yearly",
+      type: "base-plan",
+      target: "company",
+      name: "Pro+ Plan (Yearly)",
+      price: 99000,
+      monthlyTokens: 1000,
+      activeJobsLimit: 50,
+      activeAssessmentsLimit: 9999,
+      billingPeriod: "yearly",
+      features: [
+        "50 Active Job Posts",
+        "Unlimited Assessments",
+        "1000 AI Tokens/month",
+        "Enterprise ATS Integration",
+        "Dedicated Account Manager",
+        "24/7 Phone Support",
+        "Billed annually (Save ~17%)"
+      ],
+      updatedAt: new Date()
+    },
     
-    // Candidate Base Plans
+    // Candidate Base Plans (Monthly)
     {
       id: "candidate-free",
       type: "base-plan",
@@ -82,6 +132,7 @@ async function seedPricing() {
       monthlyTokens: 5,
       activeJobsLimit: 0,
       activeAssessmentsLimit: 0,
+      billingPeriod: "monthly",
       features: [
         "5 AI Tokens/month",
         "Create Interactive Profile",
@@ -94,10 +145,11 @@ async function seedPricing() {
       type: "base-plan",
       target: "candidate",
       name: "Premium Profile",
-      price: 199, // Rs 199
+      price: 199,
       monthlyTokens: 50,
       activeJobsLimit: 0,
       activeAssessmentsLimit: 0,
+      billingPeriod: "monthly",
       features: [
         "50 AI Tokens/month",
         "Resume Review by AI",
@@ -111,15 +163,56 @@ async function seedPricing() {
       type: "base-plan",
       target: "candidate",
       name: "Elite Profile",
-      price: 499, // Rs 499
+      price: 499,
       monthlyTokens: 200,
       activeJobsLimit: 0,
       activeAssessmentsLimit: 0,
+      billingPeriod: "monthly",
       features: [
         "200 AI Tokens/month",
         "Unlimited Mock Interviews",
         "Profile Boost to Top Employers",
         "Resume Rewrite & Review Support"
+      ],
+      updatedAt: new Date()
+    },
+
+    // Candidate Base Plans (Yearly)
+    {
+      id: "candidate-pro-yearly",
+      type: "base-plan",
+      target: "candidate",
+      name: "Premium Profile (Yearly)",
+      price: 1999,
+      monthlyTokens: 50,
+      activeJobsLimit: 0,
+      activeAssessmentsLimit: 0,
+      billingPeriod: "yearly",
+      features: [
+        "50 AI Tokens/month",
+        "Resume Review by AI",
+        "AI Mock Interview Access",
+        "Direct Messaging to Recruiters",
+        "Billed annually (Save ~16%)"
+      ],
+      updatedAt: new Date()
+    },
+    {
+      id: "candidate-pro-plus-yearly",
+      type: "base-plan",
+      target: "candidate",
+      name: "Elite Profile (Yearly)",
+      price: 4999,
+      monthlyTokens: 200,
+      activeJobsLimit: 0,
+      activeAssessmentsLimit: 0,
+      billingPeriod: "yearly",
+      features: [
+        "200 AI Tokens/month",
+        "Unlimited Mock Interviews",
+        "Profile Boost to Top Employers",
+        "Resume Rewrite & Review Support",
+        "Billed annually (Save ~16%)"
       ],
       updatedAt: new Date()
     },
@@ -130,7 +223,7 @@ async function seedPricing() {
       type: "ai-token-pack",
       name: "Starter Pack",
       tokensCount: 100,
-      price: 99, // Rs 99
+      price: 99,
       updatedAt: new Date()
     },
     {
@@ -138,7 +231,7 @@ async function seedPricing() {
       type: "ai-token-pack",
       name: "Value Pack",
       tokensCount: 500,
-      price: 199, // Rs 199
+      price: 199,
       updatedAt: new Date()
     },
     {
@@ -146,7 +239,7 @@ async function seedPricing() {
       type: "ai-token-pack",
       name: "Power Pack",
       tokensCount: 1000,
-      price: 399, // Rs 399
+      price: 399,
       updatedAt: new Date()
     }
   ];

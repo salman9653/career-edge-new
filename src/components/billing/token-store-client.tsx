@@ -191,7 +191,6 @@ export function TokenStoreClient({ packs, profile, accountType }: TokenStoreClie
                   
                   <div className="flex items-baseline gap-0.5 mt-4">
                     <span className="text-3xl font-black text-foreground">₹{pack.price}</span>
-                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">/ one-time</span>
                   </div>
 
                   <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-4" />

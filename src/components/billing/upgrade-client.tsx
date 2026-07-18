@@ -29,10 +29,21 @@ interface UpgradeClientProps {
 
 export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClientProps) {
   const router = useRouter();
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly");
   
   useEffect(() => {
     const { setHeader, clearHeader } = useUIStore.getState();
     setHeader("Upgrade your Subscription plan", "", "/dashboard");
+
+    // Read search parameters on mount safely on client side
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const periodParam = params.get("billingPeriod");
+      if (periodParam === "yearly" || periodParam === "monthly") {
+        setBillingPeriod(periodParam);
+      }
+    }
+
     return () => clearHeader();
   }, []);
 
@@ -54,15 +65,16 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
   };
 
   const handleUpgradeSelect = (plan: PricingItem) => {
-    const activePlan = plans.find(p => p.id === activePlanId);
-    const activePlanPrice = activePlan?.price ?? 0;
+    if (plan.id === activePlanId) return;
 
-    if (plan.price > activePlanPrice) {
-      router.push(`/dashboard/checkout?itemId=${plan.id}`);
+    // Check if it is the free tier (cancelling subscription)
+    if (plan.price === 0) {
+      setConfirmDialog({ open: true, plan });
       return;
     }
 
-    setConfirmDialog({ open: true, plan });
+    // Go to checkout for premium plan
+    router.push(`/dashboard/checkout?itemId=${plan.id}`);
   };
 
   const confirmUpgrade = () => {
@@ -84,7 +96,7 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
           throw new Error(errBody.error || "Transaction failed");
         }
 
-        showToast(`Successfully upgraded to ${plan.name}! (Mock Purchase)`, "success");
+        showToast(`Successfully changed plan to ${plan.name}! (Mock Purchase)`, "success");
         
         // Refresh router context and reload after a short delay for UX
         setTimeout(() => {
@@ -112,6 +124,12 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
     show: { y: 0, opacity: 1, transition: { type: "spring" as const, stiffness: 100 } }
   };
 
+  // Filter plans based on the selected billing period
+  const filteredPlans = plans.filter((plan) => {
+    if (plan.price === 0) return true; // Free tier is active for both
+    return (plan as any).billingPeriod === billingPeriod;
+  });
+
   return (
     <div className="py-6 px-4 sm:px-6 lg:px-8 w-full text-left">
       {/* Toast Notification */}
@@ -128,8 +146,42 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
       )}
 
       <div className="max-w-5xl mx-auto space-y-8">
-        {/* Link to Token Store */}
-        <div className="flex justify-end w-full pb-2">
+        {/* Billing Period Toggle & Link to Token Store */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full border-b border-neutral-100 dark:border-neutral-800/40 pb-6">
+          {/* Monthly/Yearly switch */}
+          <div className="flex items-center gap-3">
+            <span className={cn("text-xs font-black uppercase tracking-wider", billingPeriod === "monthly" ? "text-foreground" : "text-muted-foreground")}>
+              Monthly
+            </span>
+            <button
+              onClick={() => {
+                const nextPeriod = billingPeriod === "monthly" ? "yearly" : "monthly";
+                setBillingPeriod(nextPeriod);
+                if (typeof window !== "undefined") {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set("billingPeriod", nextPeriod);
+                  router.replace(`/dashboard/upgrade?${params.toString()}`, { scroll: false });
+                }
+              }}
+              className="relative w-11 h-6 rounded-full bg-neutral-200 dark:bg-neutral-800 p-0.5 transition-colors cursor-pointer border-0 flex items-center"
+            >
+              <div 
+                className={cn(
+                  "w-5 h-5 rounded-full bg-primary shadow-md transition-transform duration-300",
+                  billingPeriod === "yearly" ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className={cn("text-xs font-black uppercase tracking-wider", billingPeriod === "yearly" ? "text-foreground" : "text-muted-foreground")}>
+                Yearly
+              </span>
+              <span className="text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-md border border-emerald-500/10">
+                Save ~16%
+              </span>
+            </div>
+          </div>
+
           <button
             onClick={() => router.push("/dashboard/token-store")}
             className="flex items-center gap-1.5 text-xs font-extrabold text-primary hover:underline cursor-pointer border-0 bg-transparent p-0 group"
@@ -147,15 +199,20 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
           animate="show"
           className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4"
         >
-          {plans.map((plan) => {
+          {filteredPlans.map((plan) => {
             const isActive = plan.id === activePlanId;
-            const isProPlus = plan.id.endsWith("-pro-plus");
-            const isPro = plan.id.endsWith("-pro");
-            const isFree = plan.id.endsWith("-free");
+            const isProPlus = plan.id.includes("-pro-plus");
+            const isPro = plan.id.includes("-pro") && !plan.id.includes("-pro-plus");
+            const isFree = plan.id.includes("-free");
 
-            const userIsFree = activePlanId.endsWith("-free");
-            const userIsPro = activePlanId.endsWith("-pro");
-            const userIsProPlus = activePlanId.endsWith("-pro-plus");
+            const userIsFree = activePlanId.includes("-free");
+            const userIsPro = activePlanId.includes("-pro") && !activePlanId.includes("-pro-plus");
+            const userIsProPlus = activePlanId.includes("-pro-plus");
+
+            // Look up original monthly counterpart for yearly plans
+            const isYearly = plan.id.includes("-yearly");
+            const baseId = plan.id.replace("-yearly", "");
+            const monthlyPlan = plans.find(p => p.id === baseId);
 
             let buttonText = `Select Plan (₹${plan.price})`;
             if (!isActive) {
@@ -201,9 +258,18 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
                     </div>
                   </div>
                   
-                  <div className="flex items-baseline gap-1 mt-6">
-                    <span className="text-4xl font-black text-foreground">₹{plan.price}</span>
-                    <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">/ month</span>
+                  <div className="mt-6 flex flex-col justify-end min-h-[56px] gap-0.5">
+                    {isYearly && monthlyPlan && (
+                      <span className="text-[11px] text-muted-foreground/80 font-bold line-through tracking-wide">
+                        ₹{(monthlyPlan.price * 12).toLocaleString("en-IN")}
+                      </span>
+                    )}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-black text-foreground">₹{plan.price.toLocaleString("en-IN")}</span>
+                      <span className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+                        / {isYearly ? "year" : "month"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-6" />
@@ -293,7 +359,7 @@ export function UpgradeClient({ plans, activePlanId, accountType }: UpgradeClien
             <div>
               <h3 className="text-base font-extrabold text-foreground">Confirm Mock Checkout</h3>
               <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                Are you sure you want to upgrade to <span className="font-bold text-foreground">{confirmDialog.plan.name}</span> for <span className="font-bold text-foreground">₹{confirmDialog.plan.price}/month</span>?
+                Are you sure you want to upgrade to <span className="font-bold text-foreground">{confirmDialog.plan.name}</span> for <span className="font-bold text-foreground">₹{confirmDialog.plan.price}/{confirmDialog.plan.id.includes("-yearly") ? "year" : "month"}</span>?
               </p>
               <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-bold p-2.5 rounded-xl mt-3 flex items-center gap-1.5 justify-center">
                 <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />

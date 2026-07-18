@@ -4,6 +4,7 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 import { auth } from "@/lib/auth";
 import clientPromise from "@/lib/db";
+import { ObjectId } from "mongodb";
 
 export async function POST(request: Request) {
   try {
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     const discountAmount = parseFloat(rzpNotes.discountAmount || "0");
     const grandTotal = parseFloat(rzpNotes.grandTotal || "0");
     const couponCode = rzpNotes.couponCode || "";
+    const appliedOffer = rzpNotes.appliedOffer || "";
 
     const client = await clientPromise;
     const db = client.db();
@@ -145,6 +147,20 @@ export async function POST(request: Request) {
       });
     }
 
+    // Increment promotions redemptions
+    if (couponCode) {
+      await db.collection("promotions").updateOne(
+        { type: "coupon", code: couponCode },
+        { $inc: { currentTotalRedemptions: 1 } }
+      );
+    }
+    if (appliedOffer) {
+      await db.collection("promotions").updateOne(
+        { _id: new ObjectId(appliedOffer) },
+        { $inc: { currentTotalRedemptions: 1 } }
+      );
+    }
+
     // Save payment details in the database "payments" collection
     await db.collection("payments").insertOne({
       userId,
@@ -158,6 +174,7 @@ export async function POST(request: Request) {
       discountAmount,
       amountPaid: grandTotal,
       couponCode,
+      appliedOffer,
       razorpayOrderId: razorpay_order_id,
       razorpayPaymentId: razorpay_payment_id,
       razorpaySignature: razorpay_signature,

@@ -53,6 +53,20 @@ export const getProfile = cache(async (
     if (activePlan.toLowerCase() === "free" || activePlan.toLowerCase() === "starter") {
       activePlan = defaultFree;
     }
+
+    // Live subscription period & status validation
+    if (profile.subscription && profile.subscription.subscriptionId) {
+      const status = profile.subscription.status;
+      const currentPeriodEnd = profile.subscription.currentPeriodEnd ? new Date(profile.subscription.currentPeriodEnd) : null;
+      const now = new Date();
+
+      const isExpired = currentPeriodEnd ? now > currentPeriodEnd : false;
+      const isInvalidStatus = status === "halted" || status === "cancelled";
+
+      if (isExpired || isInvalidStatus) {
+        activePlan = defaultFree;
+      }
+    }
     profile.activePlan = activePlan;
 
     return JSON.parse(JSON.stringify(profile));

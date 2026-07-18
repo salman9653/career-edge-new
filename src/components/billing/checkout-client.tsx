@@ -37,15 +37,101 @@ interface CheckoutClientProps {
   profile: any;
 }
 
+const PLAN_MAPPING: Record<string, {
+  monthlyId: string;
+  yearlyId: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  savingText: string;
+  savingPercent: string;
+}> = {
+  "candidate-pro": {
+    monthlyId: "candidate-pro",
+    yearlyId: "candidate-pro-yearly",
+    monthlyPrice: 199,
+    yearlyPrice: 1999,
+    savingText: "₹389",
+    savingPercent: "16%"
+  },
+  "candidate-pro-yearly": {
+    monthlyId: "candidate-pro",
+    yearlyId: "candidate-pro-yearly",
+    monthlyPrice: 199,
+    yearlyPrice: 1999,
+    savingText: "₹389",
+    savingPercent: "16%"
+  },
+  "candidate-pro-plus": {
+    monthlyId: "candidate-pro-plus",
+    yearlyId: "candidate-pro-plus-yearly",
+    monthlyPrice: 499,
+    yearlyPrice: 4999,
+    savingText: "₹989",
+    savingPercent: "16%"
+  },
+  "candidate-pro-plus-yearly": {
+    monthlyId: "candidate-pro-plus",
+    yearlyId: "candidate-pro-plus-yearly",
+    monthlyPrice: 499,
+    yearlyPrice: 4999,
+    savingText: "₹989",
+    savingPercent: "16%"
+  },
+  "company-pro": {
+    monthlyId: "company-pro",
+    yearlyId: "company-pro-yearly",
+    monthlyPrice: 2900,
+    yearlyPrice: 29000,
+    savingText: "₹5,800",
+    savingPercent: "17%"
+  },
+  "company-pro-yearly": {
+    monthlyId: "company-pro",
+    yearlyId: "company-pro-yearly",
+    monthlyPrice: 2900,
+    yearlyPrice: 29000,
+    savingText: "₹5,800",
+    savingPercent: "17%"
+  },
+  "company-pro-plus": {
+    monthlyId: "company-pro-plus",
+    yearlyId: "company-pro-plus-yearly",
+    monthlyPrice: 9900,
+    yearlyPrice: 99000,
+    savingText: "₹19,800",
+    savingPercent: "17%"
+  },
+  "company-pro-plus-yearly": {
+    monthlyId: "company-pro-plus",
+    yearlyId: "company-pro-plus-yearly",
+    monthlyPrice: 9900,
+    yearlyPrice: 99000,
+    savingText: "₹19,800",
+    savingPercent: "17%"
+  }
+};
+
 export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
   const router = useRouter();
+  const planInfo = PLAN_MAPPING[item.id];
+  const isSubscription = item.type === "base-plan";
+  const isYearly = isSubscription && item.id.endsWith("-yearly");
   const [loading, setLoading] = useState(false);
   const [coupon, setCoupon] = useState("");
-  const [discount, setDiscount] = useState(0);
+  const [couponDiscountAmount, setCouponDiscountAmount] = useState(0);
   const [couponStatus, setCouponStatus] = useState<{
     type: "success" | "error" | "none";
     message: string;
   }>({ type: "none", message: "" });
+  const [activeOffer, setActiveOffer] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    benefitType: string;
+    discountValue: number;
+    extraMonths: number;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -61,9 +147,12 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
   // Set TopBar details dynamically
   useEffect(() => {
     const { setHeader, clearHeader } = useUIStore.getState();
-    setHeader("Checkout", "Review your order summary and complete secure payment.", "/dashboard");
+    const backLink = isYearly 
+      ? "/dashboard/upgrade?billingPeriod=yearly" 
+      : "/dashboard/upgrade?billingPeriod=monthly";
+    setHeader("Checkout", "Review your order summary and complete secure payment.", backLink);
     return () => clearHeader();
-  }, []);
+  }, [isYearly]);
 
   // Dynamically load Razorpay SDK Script
   useEffect(() => {
@@ -76,107 +165,241 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
     };
   }, []);
 
+  // Load eligible auto-applied offers on mount
+  useEffect(() => {
+    async function loadOffers() {
+      try {
+        const res = await fetch(`/api/payments/eligible-promotions?itemId=${item.id}`);
+        if (res.ok) {
+          const body = await res.json();
+          if (body.data && body.data.length > 0) {
+            setActiveOffer(body.data[0]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load active offers:", err);
+      }
+    }
+    loadOffers();
+  }, [item.id]);
+
   // Pricing calculations
   const price = item.price;
-  const appliedDiscount = Math.round(price * discount);
-  const discountedPrice = price - appliedDiscount;
-  const gstAmount = Math.round(discountedPrice * 0.18);
-  const grandTotal = discountedPrice + gstAmount;
 
-  const handleApplyCoupon = (e: React.FormEvent) => {
+  // Base subtotal (monthlyPrice * 12 for yearly subscription, or item.price otherwise)
+  const subtotal = (isYearly && planInfo) ? (planInfo.monthlyPrice * 12) : price;
+
+  // Savings from choosing yearly over monthly (e.g. 5800 for Company Pro Yearly)
+  const yearlySavings = (isYearly && planInfo) ? (subtotal - price) : 0;
+
+  // Calculate auto-applied offer discount (Step 1)
+  let offerDiscountAmount = 0;
+  if (activeOffer) {
+    if (activeOffer.benefitType === "percentage") {
+      offerDiscountAmount = Math.round(price * (activeOffer.discountValue / 100));
+    } else if (activeOffer.benefitType === "fixed-discount") {
+      offerDiscountAmount = Math.min(price, activeOffer.discountValue);
+    }
+  }
+
+  const priceAfterOffer = price - offerDiscountAmount;
+
+  // Grand total combines subtotal minus compounding discounts (Step 2)
+  const grandTotal = priceAfterOffer - couponDiscountAmount;
+
+  const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coupon.trim()) return;
 
-    const promo = coupon.trim().toUpperCase();
-    if (promo === "SAVE10" || promo === "WELCOME10") {
-      setDiscount(0.10); // 10% discount
+    setCouponLoading(true);
+    setCouponStatus({ type: "none", message: "" });
+
+    try {
+      const res = await fetch("/api/payments/validate-coupon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: coupon,
+          itemId: item.id,
+          priceAfterOffer
+        })
+      });
+
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || "Failed to validate coupon");
+      }
+
+      setCouponDiscountAmount(body.discountAmount);
       setCouponStatus({
         type: "success",
-        message: "Promo code applied! 10% discount has been subtracted."
+        message: `Promo code "${body.couponCode}" applied successfully! saved ₹${body.discountAmount.toFixed(2)}.`
       });
-    } else {
+    } catch (err: any) {
+      setCouponDiscountAmount(0);
       setCouponStatus({
         type: "error",
-        message: "Invalid promo code. Try 'SAVE10' for 10% off!"
+        message: err.message || "Invalid coupon code"
       });
+    } finally {
+      setCouponLoading(false);
     }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCoupon("");
+    setCouponDiscountAmount(0);
+    setCouponStatus({ type: "none", message: "" });
   };
 
   const handleProceedToPayment = async () => {
     setLoading(true);
     try {
-      // 1. Create order on server
-      const orderRes = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemId: item.id, couponCode: coupon })
-      });
-
-      if (!orderRes.ok) {
-        const errorData = await orderRes.json();
-        throw new Error(errorData.error || "Failed to create order");
-      }
-
-      const orderData = await orderRes.json();
-      const { orderId, amount, currency, keyId } = orderData;
-
       // Verify that Razorpay script is loaded
       if (!(window as any).Razorpay) {
         throw new Error("Razorpay SDK failed to load. Please refresh the page.");
       }
 
-      // 2. Open Razorpay checkout popup
-      const options = {
-        key: keyId,
-        amount: amount, // in paise
-        currency: currency,
-        name: "CareerEdge",
-        description: `Payment for ${item.name}`,
-        image: "/logo_light.png",
-        order_id: orderId,
-        handler: async function (response: any) {
-          setLoading(true);
-          try {
-            // 3. Verify payment on server
-            const verifyRes = await fetch("/api/payments/verify-payment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                itemId: item.id
-              })
-            });
+      let options: any;
 
-            if (!verifyRes.ok) {
-              const errBody = await verifyRes.json();
-              throw new Error(errBody.error || "Payment signature verification failed");
-            }
+      if (isSubscription) {
+        // Create subscription on server
+        const subRes = await fetch("/api/payments/create-subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            itemId: item.id,
+            couponCode: couponStatus.type === "success" ? coupon : ""
+          })
+        });
 
-            const verifyData = await verifyRes.json();
-            router.push(`/dashboard/checkout/success?itemId=${item.id}&paymentId=${verifyData.paymentId}&orderId=${verifyData.orderId}&amount=${verifyData.amountPaid}&email=${encodeURIComponent(user.email)}`);
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Verification failed";
-            router.push(`/dashboard/checkout/error?itemId=${item.id}&error=${encodeURIComponent(msg)}`);
-          } finally {
-            setLoading(false);
-          }
-        },
-        prefill: {
-          name: user.name,
-          email: user.email,
-        },
-        theme: {
-          color: "#4f46e5" // Primary Indigo
-        },
-        modal: {
-          ondismiss: function() {
-            setLoading(false);
-            router.push(`/dashboard/checkout/error?itemId=${item.id}&error=Payment%20was%2520cancelled%2520by%2520the%2520user`);
-          }
+        if (!subRes.ok) {
+          const errorData = await subRes.json();
+          throw new Error(errorData.error || "Failed to create subscription");
         }
-      };
+
+        const subData = await subRes.json();
+        const { subscriptionId, keyId } = subData;
+
+        options = {
+          key: keyId,
+          subscription_id: subscriptionId,
+          name: "CareerEdge",
+          description: `Recurring Subscription for ${item.name}`,
+          image: "/logo_light.png",
+          handler: async function (response: any) {
+            setLoading(true);
+            try {
+              // Verify subscription on server
+              const verifyRes = await fetch("/api/payments/verify-subscription", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_subscription_id: response.razorpay_subscription_id,
+                  razorpay_signature: response.razorpay_signature,
+                  itemId: item.id
+                })
+              });
+
+              if (!verifyRes.ok) {
+                const errBody = await verifyRes.json();
+                throw new Error(errBody.error || "Subscription signature verification failed");
+              }
+
+              const verifyData = await verifyRes.json();
+              router.push(`/dashboard/checkout/success?itemId=${item.id}&paymentId=${verifyData.paymentId}&subscriptionId=${verifyData.subscriptionId}&amount=${verifyData.amountPaid || price}&email=${encodeURIComponent(user.email)}`);
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : "Verification failed";
+              router.push(`/dashboard/checkout/error?itemId=${item.id}&error=${encodeURIComponent(msg)}`);
+            } finally {
+              setLoading(false);
+             }
+          },
+          prefill: {
+            name: user.name,
+            email: user.email,
+          },
+          theme: {
+            color: "#4f46e5"
+          },
+          modal: {
+            ondismiss: function() {
+              setLoading(false);
+              router.push(`/dashboard/checkout/error?itemId=${item.id}&error=Payment%20was%2520cancelled%2520by%2520the%2520user`);
+            }
+          }
+        };
+      } else {
+        // Create one-time order on server
+        const orderRes = await fetch("/api/payments/create-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            itemId: item.id,
+            couponCode: couponStatus.type === "success" ? coupon : ""
+          })
+        });
+
+        if (!orderRes.ok) {
+          const errorData = await orderRes.json();
+          throw new Error(errorData.error || "Failed to create order");
+        }
+
+        const orderData = await orderRes.json();
+        const { orderId, amount, currency, keyId } = orderData;
+
+        options = {
+          key: keyId,
+          amount: amount,
+          currency: currency,
+          name: "CareerEdge",
+          description: `Payment for ${item.name}`,
+          image: "/logo_light.png",
+          order_id: orderId,
+          handler: async function (response: any) {
+            setLoading(true);
+            try {
+              const verifyRes = await fetch("/api/payments/verify-payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  itemId: item.id
+                })
+              });
+
+              if (!verifyRes.ok) {
+                const errBody = await verifyRes.json();
+                throw new Error(errBody.error || "Payment signature verification failed");
+              }
+
+              const verifyData = await verifyRes.json();
+              router.push(`/dashboard/checkout/success?itemId=${item.id}&paymentId=${verifyData.paymentId}&orderId=${verifyData.orderId}&amount=${verifyData.amountPaid}&email=${encodeURIComponent(user.email)}`);
+            } catch (err: unknown) {
+              const msg = err instanceof Error ? err.message : "Verification failed";
+              router.push(`/dashboard/checkout/error?itemId=${item.id}&error=${encodeURIComponent(msg)}`);
+            } finally {
+              setLoading(false);
+            }
+          },
+          prefill: {
+            name: user.name,
+            email: user.email,
+          },
+          theme: {
+            color: "#4f46e5"
+          },
+          modal: {
+            ondismiss: function() {
+              setLoading(false);
+              router.push(`/dashboard/checkout/error?itemId=${item.id}&error=Payment%20was%2520cancelled%2520by%2520the%2520user`);
+            }
+          }
+        };
+      }
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
@@ -266,6 +489,61 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
             </div>
           </div>
 
+          {/* Yearly Plan savings warnings / Monthly upgrade prompts */}
+          {isSubscription && item.id.endsWith("-yearly") && planInfo && (
+            <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/15 rounded-3xl p-5 text-xs font-semibold flex items-center justify-between shadow-sm relative overflow-hidden">
+              <div className="flex flex-col text-left">
+                <span className="font-extrabold text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Yearly Discount Active</span>
+                <span className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed font-semibold">
+                  You are saving <span className="font-bold text-emerald-600 dark:text-emerald-400">{planInfo.savingPercent}</span> compared to monthly billing.
+                </span>
+              </div>
+              <span className="font-black text-sm bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl flex-shrink-0">Save {planInfo.savingText}</span>
+            </div>
+          )}
+
+          {isSubscription && !item.id.endsWith("-yearly") && planInfo && (
+            <div className="bg-emerald-500/5 text-emerald-500 border border-emerald-500/15 rounded-[1.5rem] p-5 text-xs font-semibold flex flex-col gap-4 shadow-sm relative overflow-hidden items-start">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex flex-col text-left">
+                <span className="font-black text-[11px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400">🔥 Upgrade to Yearly & Save!</span>
+                <span className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed font-semibold">
+                  Switch your order to the yearly plan now and save <span className="font-black text-emerald-600 dark:text-emerald-400">{planInfo.savingPercent} ({planInfo.savingText} / year)</span> compared to monthly billing.
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  router.replace(`/dashboard/checkout?itemId=${planInfo.yearlyId}`);
+                }}
+                className="w-fit px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition-all shadow-md cursor-pointer border-0 flex items-center justify-center gap-1.5 self-end"
+              >
+                <span>Switch to Yearly & Save {planInfo.savingPercent}</span>
+                <ArrowRight className="w-3.5 h-3.5 animate-pulse" />
+              </button>
+            </div>
+          )}
+
+          {/* Active Auto-applied Offer Banner */}
+          {activeOffer && (
+            <div className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/15 rounded-3xl p-5 text-xs font-semibold relative overflow-hidden flex flex-col gap-1.5 shadow-sm">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse flex-shrink-0" />
+                <span className="font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Offer Active: {activeOffer.name}
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground font-semibold leading-relaxed pl-6">
+                {activeOffer.description}
+              </p>
+              {activeOffer.benefitType === "extra-time" && (
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold pl-6 animate-pulse">
+                  🎉 +{activeOffer.extraMonths} Free Months will be added to your access period automatically!
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Coupon / Promo code card */}
           <div className="rounded-3xl border border-neutral-200/40 dark:border-neutral-800/40 bg-card p-6 shadow-md">
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-3">Apply Promo Code</span>
@@ -277,17 +555,30 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
                   type="text"
                   value={coupon}
                   onChange={(e) => setCoupon(e.target.value)}
-                  placeholder="Enter coupon (e.g. SAVE10)"
-                  className="w-full h-10 pl-10 pr-4 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-50/50 dark:bg-neutral-900/40 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 text-foreground uppercase"
+                  placeholder="Enter coupon (e.g. WELCOME10)"
+                  disabled={couponStatus.type === "success" || couponLoading}
+                  className="w-full h-10 pl-10 pr-4 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50 bg-neutral-50/50 dark:bg-neutral-900/40 text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 text-foreground uppercase disabled:opacity-75"
                 />
               </div>
-              <Button
-                type="submit"
-                variant="outline"
-                className="font-bold text-xs h-10 px-5 rounded-xl border-neutral-200 dark:border-neutral-800 cursor-pointer"
-              >
-                Apply
-              </Button>
+              {couponStatus.type === "success" ? (
+                <Button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  variant="outline"
+                  className="font-bold text-xs h-10 px-5 rounded-xl border-red-200/40 text-red-500 hover:bg-red-500/10 cursor-pointer"
+                >
+                  Remove
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={couponLoading}
+                  className="font-bold text-xs h-10 px-5 rounded-xl border-neutral-200 dark:border-neutral-800 cursor-pointer"
+                >
+                  {couponLoading ? "Applying..." : "Apply"}
+                </Button>
+              )}
             </form>
 
             {couponStatus.type !== "none" && (
@@ -311,27 +602,49 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
               <div className="space-y-3.5 text-xs text-muted-foreground font-bold">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="text-foreground">₹{price.toFixed(2)}</span>
+                  <span className="text-foreground">₹{subtotal.toFixed(2)}</span>
                 </div>
                 
-                {discount > 0 && (
+                {isYearly && yearlySavings > 0 && (
                   <div className="flex justify-between text-emerald-500">
-                    <span>Discount (10%)</span>
-                    <span>-₹{appliedDiscount.toFixed(2)}</span>
+                    <span>Yearly Savings ({planInfo.savingPercent})</span>
+                    <span>-₹{yearlySavings.toFixed(2)}</span>
                   </div>
                 )}
 
-                <div className="flex justify-between">
-                  <span>GST (18%)</span>
-                  <span className="text-foreground">₹{gstAmount.toFixed(2)}</span>
-                </div>
+                {activeOffer && offerDiscountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-500 animate-fade-in">
+                    <span>Offer: {activeOffer.name}</span>
+                    <span>-₹{offerDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {couponStatus.type === "success" && couponDiscountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-500 animate-fade-in">
+                    <span>Coupon: {coupon}</span>
+                    <span>-₹{couponDiscountAmount.toFixed(2)}</span>
+                  </div>
+                )}
 
                 <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50 my-4" />
 
                 <div className="flex justify-between text-sm text-foreground font-black">
                   <span>Grand Total</span>
-                  <span className="text-lg">₹{grandTotal.toFixed(2)}</span>
+                  <span className="text-lg">
+                    ₹{grandTotal.toFixed(2)}
+                    {isSubscription && (
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase ml-1">
+                        / {item.id.endsWith("-yearly") ? "yr" : "mo"}
+                      </span>
+                    )}
+                  </span>
                 </div>
+
+                {activeOffer && activeOffer.benefitType === "extra-time" && (
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold text-right mt-1 animate-pulse">
+                    🎉 +{activeOffer.extraMonths} Free Months will be added to your subscription!
+                  </div>
+                )}
               </div>
             </div>
 
@@ -350,16 +663,22 @@ export function CheckoutClient({ item, user, profile }: CheckoutClientProps) {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processing Payment...</span>
+                    <span>Processing...</span>
                   </>
                 ) : (
                   <>
                     <CreditCard className="w-4 h-4" />
-                    <span>Proceed to Pay</span>
+                    <span>{isSubscription ? "Subscribe & Pay" : "Proceed to Pay"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </>
                 )}
               </Button>
+
+              {isSubscription && (
+                <p className="text-[9px] text-muted-foreground font-semibold text-center mt-2 leading-relaxed">
+                  By subscribing, you authorize automatic recurring renewals of ₹{grandTotal} billed {item.id.endsWith("-yearly") ? "annually" : "monthly"}. Cancel anytime in Billing Settings.
+                </p>
+              )}
 
               {/* Supported cards logos */}
               <div className="flex justify-center items-center gap-3 pt-2 text-[9px] text-muted-foreground font-semibold">

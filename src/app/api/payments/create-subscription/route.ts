@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import Razorpay from "razorpay";
-import { ObjectId } from "mongodb";
 import { auth } from "@/lib/auth";
 import clientPromise from "@/lib/db";
 
@@ -22,6 +21,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing itemId" }, { status: 400 });
     }
 
+    // Map base plan ID to the corresponding Razorpay Plan ID from environment variables
+    let planId: string | undefined;
+    switch (itemId) {
+      case "candidate-pro":
+        planId = process.env.NEXT_PUBLIC_CANDIDATE_PRO_MONTHLY_PLAN_ID;
+        break;
+      case "candidate-pro-yearly":
+        planId = process.env.NEXT_PUBLIC_CANDIDATE_PRO_YEARLY_PLAN_ID;
+        break;
+      case "candidate-pro-plus":
+        planId = process.env.NEXT_PUBLIC_CANDIDATE_PRO_PLUS_MONTHLY_PLAN_ID;
+        break;
+      case "candidate-pro-plus-yearly":
+        planId = process.env.NEXT_PUBLIC_CANDIDATE_PRO_PLUS_YEARLY_PLAN_ID;
+        break;
+      case "company-pro":
+        planId = process.env.NEXT_PUBLIC_COMPANY_PRO_MONTHLY_PLAN_ID;
+        break;
+      case "company-pro-yearly":
+        planId = process.env.NEXT_PUBLIC_COMPANY_PRO_YEARLY_PLAN_ID;
+        break;
+      case "company-pro-plus":
+        planId = process.env.NEXT_PUBLIC_COMPANY_PRO_PLUS_MONTHLY_PLAN_ID;
+        break;
+      case "company-pro-plus-yearly":
+        planId = process.env.NEXT_PUBLIC_COMPANY_PRO_PLUS_YEARLY_PLAN_ID;
+        break;
+      default:
+        return NextResponse.json({ error: `Invalid subscription plan itemId: ${itemId}` }, { status: 400 });
+    }
+
+    if (!planId) {
+      console.error(`Razorpay Plan ID environment variable is missing for item: ${itemId}`);
+      return NextResponse.json({ error: `Subscription Plan ID configuration error for item ${itemId}` }, { status: 500 });
+    }
+
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
@@ -30,10 +65,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payment configuration error" }, { status: 500 });
     }
 
+    // Initialize Razorpay SDK
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    }) as any;
+
+    // Subscriptions count (e.g. 10 years duration to simulate infinite recurring)
+    const isYearly = itemId.endsWith("-yearly");
+    const totalCount = isYearly ? 10 : 120;
+
+    // Fetch pricing detail from DB
     const client = await clientPromise;
     const db = client.db();
-    
-    // Fetch pricing detail from DB
     const pricingItem = await db.collection("pricing").findOne({ id: itemId });
     if (!pricingItem) {
       return NextResponse.json({ error: "Pricing plan not found" }, { status: 404 });
@@ -69,6 +113,7 @@ export async function POST(request: Request) {
     let offerDiscountAmount = 0;
     let priceAfterOffer = price;
     let appliedOfferId = "";
+    let extraMonthsVal = 0;
 
     if (eligibleOffer) {
       appliedOfferId = eligibleOffer._id.toString();
@@ -76,6 +121,8 @@ export async function POST(request: Request) {
         offerDiscountAmount = Math.round(price * (eligibleOffer.discountValue / 100));
       } else if (eligibleOffer.benefitType === "fixed-discount") {
         offerDiscountAmount = Math.min(price, eligibleOffer.discountValue);
+      } else if (eligibleOffer.benefitType === "extra-time") {
+        extraMonthsVal = eligibleOffer.extraMonths || 0;
       }
       priceAfterOffer = price - offerDiscountAmount;
     }
@@ -116,26 +163,14 @@ export async function POST(request: Request) {
 
     const totalDiscount = offerDiscountAmount + couponDiscountAmount;
     const grandTotal = priceAfterOffer - couponDiscountAmount;
-    const gstAmount = 0; // GST is disabled
+    const gstAmount = 0;
 
-    if (grandTotal <= 0) {
-      return NextResponse.json({ error: "Invalid payment amount after discounts" }, { status: 400 });
-    }
-
-    // Initialize Razorpay SDK
-    const razorpay = new Razorpay({
-      key_id: keyId,
-      key_secret: keySecret,
-    });
-
-    // Create Razorpay Order (amount is in paise, e.g. Rs 1 = 100 paise)
-    const amountInPaise = Math.round(grandTotal * 100);
-    const receiptId = new ObjectId().toString();
-    
-    const order = await razorpay.orders.create({
-      amount: amountInPaise,
-      currency: "INR",
-      receipt: receiptId,
+    // Create Subscription in Razorpay
+    const subscription = await razorpay.subscriptions.create({
+      plan_id: planId,
+      total_count: totalCount,
+      quantity: 1,
+      customer_notify: 1,
       notes: {
         userId: session.user.id,
         itemId: itemId,
@@ -143,22 +178,20 @@ export async function POST(request: Request) {
         couponCode: appliedCouponCode || "",
         appliedOffer: appliedOfferId || "",
         discountAmount: totalDiscount.toString(),
-        gstAmount: gstAmount.toString(),
+        extraMonths: extraMonthsVal.toString(),
         basePrice: price.toString(),
         grandTotal: grandTotal.toString(),
       },
     });
 
     return NextResponse.json({
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
+      subscriptionId: subscription.id,
       keyId: keyId,
     }, { status: 200 });
 
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal Server Error";
-    console.error("POST /api/payments/create-order error:", err);
+    console.error("POST /api/payments/create-subscription error:", err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

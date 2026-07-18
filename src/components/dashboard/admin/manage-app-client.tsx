@@ -331,7 +331,6 @@ export function ManageAppClient({ initialPricing, initialPayments = [] }: Manage
 
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-black text-foreground">₹{pack.price}</span>
-                    <span className="text-xs text-muted-foreground">one-time</span>
                   </div>
 
                   <div className="h-px bg-neutral-200/50 dark:bg-neutral-800/50" />
